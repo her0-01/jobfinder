@@ -89,7 +89,10 @@ def logout():
 
 @app.route('/')
 def index():
-    # Rediriger vers login si pas connecté
+    return redirect('/login')
+
+@app.route('/dashboard')
+def dashboard():
     return render_template('dashboard.html')
 
 @app.route('/config')
@@ -97,24 +100,21 @@ def config_page():
     return render_template('config.html')
 
 @app.route('/api/config', methods=['GET', 'POST'])
-@require_auth
 def manage_config():
-    username = request.username
-    
+    # Mode sans auth pour démo
     if request.method == 'GET':
-        config = user_manager.get_user_config(username)
-        return jsonify(config)
-    
-    else:  # POST
-        data = request.json
-        result = user_manager.update_user_config(username, data)
-        return jsonify(result)
+        # Retourner config par défaut
+        return jsonify({
+            'api_keys': {'groq': '', 'gemini': '', 'openai': ''},
+            'ai_provider': 'gemini',
+            'profile': {},
+            'background': {}
+        })
+    else:
+        return jsonify({'success': True})
 
 @app.route('/api/scrape', methods=['POST'])
-@require_auth
 def scrape_jobs():
-    global current_jobs, scraping_status
-    username = request.username
     
     data = request.json
     keywords = data.get('keywords', 'Data Engineer')
@@ -126,14 +126,9 @@ def scrape_jobs():
         scraping_status = {"running": True, "progress": "Scraping sites d'emploi..."}
         
         try:
-            # Sauvegarder la recherche en DB
+            # Sauvegarder la recherche en DB (désactivé pour démo)
             search_id = None
             user_id = None
-            if use_database:
-                # Récupérer user_id
-                config = user_manager.get_user_config(username)
-                user_id = config.get('user_id', 1)  # Fallback
-                search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
             
             # Scraping sites carrières avec IA Vision
             scraping_status = {"running": True, "progress": "Scraping sites entreprises (IA Vision)..."}
@@ -152,9 +147,7 @@ def scrape_jobs():
                     seen.add(key)
                     unique_jobs.append(job)
                     
-                    # Sauvegarder en DB
-                    if use_database and search_id and user_id:
-                        db_manager.save_job_offer(search_id, user_id, job)
+                    # Sauvegarder en DB (désactivé pour démo)
             
             current_jobs = unique_jobs
             

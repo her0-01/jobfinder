@@ -192,7 +192,7 @@
                 if (result.success) {
                     localStorage.setItem('token', result.token);
                     localStorage.setItem('username', result.username);
-                    window.location.href = '/';
+                    window.location.href = '/dashboard';
                 } else {
                     showError(result.error);
                 }
@@ -234,7 +234,7 @@
 
         // Vérifier si déjà connecté
         if (localStorage.getItem('token')) {
-            window.location.href = '/';
+            window.location.href = '/dashboard';
         }
     </script>
 </body>
