@@ -39,13 +39,14 @@ class AdaptiveScraper:
         try:
             # Essayer Chromium en premier (Railway/Linux)
             try:
-                options = webdriver.ChromeOptions()
+                from selenium import webdriver as wd
+                options = wd.ChromeOptions()
                 options.binary_location = '/usr/bin/chromium'
                 options.add_argument('--headless')
                 options.add_argument('--no-sandbox')
                 options.add_argument('--disable-dev-shm-usage')
                 options.add_argument('--disable-blink-features=AutomationControlled')
-                self.driver = webdriver.Chrome(options=options)
+                self.driver = wd.Chrome(options=options)
                 self.logger.info("✅ Chromium initialisé")
             except Exception as chromium_error:
                 self.logger.warning(f"⚠️ Chromium échoué: {chromium_error}")
@@ -71,7 +72,6 @@ class AdaptiveScraper:
                     raise FileNotFoundError("Chrome non trouvé")
         except Exception as e:
             self.logger.warning(f"⚠️ Chrome échoué: {e}, utilisation Edge")
-            from selenium import webdriver
             options = webdriver.EdgeOptions()
             options.add_argument('--disable-blink-features=AutomationControlled')
             try:
