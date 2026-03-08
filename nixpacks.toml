@@ -1,0 +1,8 @@
+[phases.setup]
+aptPkgs = ["chromium", "chromium-driver"]
+
+[phases.install]
+cmds = ["pip install -r job_scraper/requirements.txt"]
+
+[start]
+cmd = "cd job_scraper && python web_app.py"

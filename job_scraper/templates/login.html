@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS-OS - Connexion</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 400px;
+        }
+        h1 { text-align: center; margin-bottom: 30px; color: #333; }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .form { display: none; }
+        .form.active { display: block; }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: translateY(-2px); }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 NEXUS-OS</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('login')">Connexion</div>
+            <div class="tab" onclick="switchTab('register')">Inscription</div>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+
+        <!-- Formulaire de connexion -->
+        <form class="form active" id="loginForm" onsubmit="login(event)">
+            <div class="input-group">
+                <label>Nom d'utilisateur</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="input-group">
+                <label>Mot de passe</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit">Se connecter</button>
+        </form>
+
+        <!-- Formulaire d'inscription -->
+        <form class="form" id="registerForm" onsubmit="register(event)">
+            <div class="input-group">
+                <label>Nom d'utilisateur</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </div>
+            <div class="input-group">
+                <label>Mot de passe</label>
+                <input type="password" name="password" required minlength="6">
+            </div>
+            <button type="submit">S'inscrire</button>
+        </form>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
+            
+            if (tab === 'login') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+            
+            hideMessages();
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('success');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+        }
+
+        async function login(e) {
+            e.preventDefault();
+            hideMessages();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                username: formData.get('username'),
+                password: formData.get('password')
+            };
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    localStorage.setItem('token', result.token);
+                    localStorage.setItem('username', result.username);
+                    window.location.href = '/';
+                } else {
+                    showError(result.error);
+                }
+            } catch (err) {
+                showError('Erreur de connexion');
+            }
+        }
+
+        async function register(e) {
+            e.preventDefault();
+            hideMessages();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                username: formData.get('username'),
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    showSuccess('Inscription réussie ! Vous pouvez vous connecter.');
+                    setTimeout(() => switchTab('login'), 2000);
+                } else {
+                    showError(result.error);
+                }
+            } catch (err) {
+                showError('Erreur d\'inscription');
+            }
+        }
+
+        // Vérifier si déjà connecté
+        if (localStorage.getItem('token')) {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

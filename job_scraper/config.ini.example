@@ -1,0 +1,49 @@
+[API]
+groq_api_key = VOTRE_CLE_GROQ_ICI
+
+[PROFILE]
+name = Votre Nom Complet
+email = votre.email@example.com
+phone = +33 6 XX XX XX XX
+github = https://github.com/votre-username
+portfolio = https://votre-portfolio.com
+linkedin = https://linkedin.com/in/votre-profil
+
+[BACKGROUND]
+# Formation actuelle
+formation_actuelle = Master 2 Data Science - Université Paris-Saclay
+
+# Formation/Poste visé
+formation_visee = Alternance Data Engineer / Data Scientist
+
+# Année d'études
+annee_etudes = 2024-2025
+
+# Spécialisation
+specialisation = Machine Learning, Big Data, Cloud Computing, MLOps
+
+# Compétences clés (séparées par virgules)
+competences_cles = Python, SQL, TensorFlow, PyTorch, Spark, AWS, Docker, Kubernetes
+
+# Projets majeurs (séparés par virgules)
+projets_majeurs = Système de recommandation e-commerce avec ML, Dashboard analytics temps réel avec Spark, Bot trading automatisé avec deep learning
+
+# Motivation (1-2 phrases)
+motivation = Passionné par l'IA et le traitement de données à grande échelle. Recherche une alternance pour appliquer mes compétences en environnement professionnel et contribuer à des projets innovants.
+
+# Objectifs professionnels (1-2 phrases)
+objectifs = Contribuer à des projets data innovants, développer mon expertise en MLOps et architectures cloud scalables, travailler sur des problématiques de données à grande échelle.
+
+[PREFERENCES]
+job_titles = Data Engineer Alternance, Data Scientist Alternance, ML Engineer Alternance
+locations = Paris, Île-de-France, Remote, France
+experience_level = Junior, Alternance, Stage
+contract_types = Alternance, Apprentissage
+
+[CV_PATH]
+base_cv = data/cv_base.tex
+base_cover_letter = data/lettre_motivation_base.txt
+
+[SCRAPING]
+max_jobs_per_site = 50
+update_interval_hours = 6

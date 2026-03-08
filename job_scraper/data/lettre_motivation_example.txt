@@ -1,0 +1,31 @@
+Madame, Monsieur,
+
+Actuellement en [FORMATION], je suis à la recherche d'une [TYPE_CONTRAT] dans le domaine de [DOMAINE].
+
+Passionné(e) par [VOS_PASSIONS], j'ai développé des compétences solides en [VOS_COMPETENCES] à travers mes projets académiques et personnels.
+
+Mon parcours m'a permis de :
+- [RÉALISATION 1]
+- [RÉALISATION 2]
+- [RÉALISATION 3]
+
+Je suis particulièrement intéressé(e) par votre entreprise car [RAISON_INTERET_ENTREPRISE].
+
+Mes compétences techniques incluent :
+- [COMPÉTENCE 1]
+- [COMPÉTENCE 2]
+- [COMPÉTENCE 3]
+
+Je serais ravi(e) de contribuer à vos projets et d'apporter ma motivation et mon dynamisme à votre équipe.
+
+Dans l'attente de votre retour, je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.
+
+[VOTRE NOM]
+
+---
+
+NOTE: L'IA personnalisera automatiquement cette lettre pour chaque offre en :
+- Adaptant le contenu à l'entreprise et au poste
+- Mettant en avant les compétences pertinentes
+- Ajoutant des exemples concrets de vos projets
+- Gardant un ton professionnel et humain

@@ -1,0 +1,29 @@
+# Configuration sensible
+config.ini
+
+# Données personnelles
+data/cv_base.tex
+data/cv_base.txt
+data/lettre_motivation_base.txt
+data/jobs_*.json
+data/applications/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

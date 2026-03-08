@@ -1,0 +1,70 @@
+# Clés API et données sensibles
+config.ini
+*.env
+.env
+
+# Données personnelles
+job_scraper/data/cv_base.tex
+job_scraper/data/lettre_motivation_base.txt
+job_scraper/data/jobs_latest.json
+job_scraper/data/test_results.json
+job_scraper/data/applications/*
+
+# Logs
+*.log
+job_scraper/logs/*.log
+
+# Fichiers debug
+debug_*.html
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Chrome/Selenium
+chromedriver.exe
+geckodriver.exe
+*.crx
+
+# PDFs générés
+*.pdf
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.backup

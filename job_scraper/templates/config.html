@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Configuration - NEXUS Job Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .config-container { max-width: 1200px; margin: 2rem auto; }
+        .config-card { background: white; border-radius: 15px; padding: 2rem; margin-bottom: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .section-title { color: #667eea; font-weight: bold; margin-bottom: 1.5rem; border-bottom: 2px solid #667eea; padding-bottom: 0.5rem; }
+        .btn-save { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .provider-card { border: 2px solid #e0e0e0; border-radius: 10px; padding: 1rem; cursor: pointer; transition: all 0.3s; }
+        .provider-card:hover { border-color: #667eea; transform: translateY(-2px); }
+        .provider-card.active { border-color: #667eea; background: #f0f4ff; }
+    </style>
+</head>
+<body>
+    <div class="config-container">
+        <div class="text-center mb-4">
+            <h1 class="text-white"><i class="fas fa-cog"></i> Configuration NEXUS</h1>
+            <a href="/" class="btn btn-light mt-2"><i class="fas fa-arrow-left"></i> Retour Dashboard</a>
+        </div>
+
+        <!-- Provider IA -->
+        <div class="config-card">
+            <h3 class="section-title"><i class="fas fa-brain"></i> Provider IA</h3>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="provider-card" data-provider="groq">
+                        <h5><i class="fas fa-bolt"></i> Groq</h5>
+                        <p class="small text-muted">Ultra rapide, gratuit</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="provider-card" data-provider="openai">
+                        <h5><i class="fas fa-robot"></i> OpenAI</h5>
+                        <p class="small text-muted">GPT-4, très puissant</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="provider-card" data-provider="gemini">
+                        <h5><i class="fas fa-gem"></i> Google Gemini</h5>
+                        <p class="small text-muted">Gratuit, performant</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <label class="form-label fw-bold">Clé API</label>
+                <input type="password" class="form-control" id="apiKey" placeholder="Entrez votre clé API">
+                <small class="text-muted">
+                    <span id="apiKeyHelp"></span>
+                </small>
+            </div>
+        </div>
+
+        <!-- Profil Candidat -->
+        <div class="config-card">
+            <h3 class="section-title"><i class="fas fa-user"></i> Profil Candidat</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nom Complet</label>
+                    <input type="text" class="form-control" id="fullName">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Téléphone</label>
+                    <input type="tel" class="form-control" id="phone">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">LinkedIn</label>
+                    <input type="url" class="form-control" id="linkedin">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">GitHub</label>
+                    <input type="url" class="form-control" id="github">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Portfolio</label>
+                    <input type="url" class="form-control" id="portfolio">
+                </div>
+            </div>
+        </div>
+
+        <!-- Formation -->
+        <div class="config-card">
+            <h3 class="section-title"><i class="fas fa-graduation-cap"></i> Formation</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Formation Actuelle</label>
+                    <input type="text" class="form-control" id="formationActuelle" placeholder="BUT Science des Données">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Formation Visée</label>
+                    <input type="text" class="form-control" id="formationVisee" placeholder="Master Data Science">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Spécialisation</label>
+                    <input type="text" class="form-control" id="specialisation" placeholder="Machine Learning, Big Data">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Compétences Clés</label>
+                    <textarea class="form-control" id="competencesCles" rows="3" placeholder="Python, SQL, Machine Learning..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paramètres Scraping -->
+        <div class="config-card">
+            <h3 class="section-title"><i class="fas fa-search"></i> Paramètres Scraping</h3>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Mots-clés par défaut</label>
+                    <input type="text" class="form-control" id="defaultKeywords" value="Data Engineer">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Localisation par défaut</label>
+                    <input type="text" class="form-control" id="defaultLocation" value="France">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Type de contrat</label>
+                    <select class="form-control" id="defaultContract">
+                        <option value="Alternance">Alternance</option>
+                        <option value="Stage">Stage</option>
+                        <option value="CDI">CDI</option>
+                        <option value="CDD">CDD</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Nombre max d'offres par site</label>
+                    <input type="number" class="form-control" id="maxOffres" value="10" min="5" max="50">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Timeout scraping (secondes)</label>
+                    <input type="number" class="form-control" id="timeout" value="30" min="10" max="120">
+                </div>
+            </div>
+        </div>
+
+        <!-- Boutons -->
+        <div class="text-center">
+            <button class="btn btn-save btn-lg text-white px-5" onclick="saveConfig()">
+                <i class="fas fa-save"></i> Enregistrer la Configuration
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentProvider = 'groq';
+
+        // Charger config au démarrage
+        window.onload = () => {
+            loadConfig();
+        };
+
+        // Sélection provider
+        document.querySelectorAll('.provider-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                currentProvider = this.dataset.provider;
+                updateApiKeyHelp();
+            });
+        });
+
+        function updateApiKeyHelp() {
+            const helps = {
+                'groq': 'Obtenez votre clé sur <a href="https://console.groq.com" target="_blank">console.groq.com</a>',
+                'openai': 'Obtenez votre clé sur <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>',
+                'gemini': 'Obtenez votre clé sur <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a>'
+            };
+            document.getElementById('apiKeyHelp').innerHTML = helps[currentProvider];
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                // Provider
+                currentProvider = config.ai_provider || 'groq';
+                document.querySelector(`[data-provider="${currentProvider}"]`).classList.add('active');
+                document.getElementById('apiKey').value = config.api_key || '';
+                updateApiKeyHelp();
+                
+                // Profil
+                document.getElementById('fullName').value = config.profile?.name || '';
+                document.getElementById('email').value = config.profile?.email || '';
+                document.getElementById('phone').value = config.profile?.phone || '';
+                document.getElementById('linkedin').value = config.profile?.linkedin || '';
+                document.getElementById('github').value = config.profile?.github || '';
+                document.getElementById('portfolio').value = config.profile?.portfolio || '';
+                
+                // Formation
+                document.getElementById('formationActuelle').value = config.background?.formation_actuelle || '';
+                document.getElementById('formationVisee').value = config.background?.formation_visee || '';
+                document.getElementById('specialisation').value = config.background?.specialisation || '';
+                document.getElementById('competencesCles').value = config.background?.competences_cles || '';
+                
+                // Scraping
+                document.getElementById('defaultKeywords').value = config.scraping?.keywords || 'Data Engineer';
+                document.getElementById('defaultLocation').value = config.scraping?.location || 'France';
+                document.getElementById('defaultContract').value = config.scraping?.contract || 'Alternance';
+                document.getElementById('maxOffres').value = config.scraping?.max_offres || 10;
+                document.getElementById('timeout').value = config.scraping?.timeout || 30;
+                
+            } catch (error) {
+                console.error('Erreur chargement config:', error);
+            }
+        }
+
+        async function saveConfig() {
+            const config = {
+                ai_provider: currentProvider,
+                api_key: document.getElementById('apiKey').value,
+                profile: {
+                    name: document.getElementById('fullName').value,
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value,
+                    linkedin: document.getElementById('linkedin').value,
+                    github: document.getElementById('github').value,
+                    portfolio: document.getElementById('portfolio').value
+                },
+                background: {
+                    formation_actuelle: document.getElementById('formationActuelle').value,
+                    formation_visee: document.getElementById('formationVisee').value,
+                    specialisation: document.getElementById('specialisation').value,
+                    competences_cles: document.getElementById('competencesCles').value
+                },
+                scraping: {
+                    keywords: document.getElementById('defaultKeywords').value,
+                    location: document.getElementById('defaultLocation').value,
+                    contract: document.getElementById('defaultContract').value,
+                    max_offres: parseInt(document.getElementById('maxOffres').value),
+                    timeout: parseInt(document.getElementById('timeout').value)
+                }
+            };
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    alert('✅ Configuration enregistrée avec succès !');
+                } else {
+                    alert('❌ Erreur lors de l\'enregistrement');
+                }
+            } catch (error) {
+                alert('❌ Erreur: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+selenium==4.9.0
+undetected-chromedriver==3.5.5
+beautifulsoup4==4.12.2
+requests==2.31.0
+lxml==4.9.3
+flask==3.0.0
+reportlab==4.0.7
+markdown==3.5.1

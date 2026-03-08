@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Application Bot - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }
+        h1 { font-size: 2.8em; margin-bottom: 10px; font-weight: 700; }
+        .search-panel { background: white; padding: 35px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 30px; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 10px; font-weight: 600; color: #2d3748; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, select { width: 100%; padding: 14px 18px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; transition: all 0.3s; }
+        input:focus, select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .btn { padding: 14px 32px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }
+        .btn-success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4); }
+        .status { padding: 20px; background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%); border-left: 4px solid #38b2ac; border-radius: 10px; margin: 20px 0; }
+        .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 25px; margin-top: 30px; }
+        .job-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: all 0.3s; position: relative; border: 2px solid transparent; }
+        .job-card:hover { transform: translateY(-5px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); border-color: #667eea; }
+        .job-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; }
+        .job-title { font-size: 1.4em; color: #2d3748; margin-bottom: 12px; font-weight: 700; line-height: 1.3; }
+        .job-company { color: #667eea; font-weight: 600; font-size: 1.1em; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .job-location { color: #718096; font-size: 0.95em; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        .job-source { display: inline-block; padding: 6px 14px; background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%); border-radius: 20px; font-size: 0.85em; color: #4a5568; font-weight: 600; }
+        .relevance-badge { position: absolute; top: 20px; right: 20px; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9em; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .relevance-high { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; }
+        .relevance-medium { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); color: white; }
+        .relevance-low { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); color: white; }
+        .job-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .tabs { display: flex; gap: 15px; margin-bottom: 25px; }
+        .tab { padding: 14px 28px; background: white; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s; }
+        .tab.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: #667eea; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); }
+        .applications-list { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .app-item { padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s; }
+        .app-item:hover { background: #f7fafc; }
+        .score { font-weight: 700; padding: 8px 18px; border-radius: 20px; font-size: 1.1em; }
+        .score-high { background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%); color: #22543d; }
+        .score-medium { background: linear-gradient(135deg, #feebc8 0%, #fbd38d 100%); color: #7c2d12; }
+        .score-low { background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%); color: #742a2a; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-content { background: white; width: 90%; max-width: 900px; margin: 50px auto; padding: 40px; border-radius: 20px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .close { float: right; font-size: 32px; cursor: pointer; color: #a0aec0; transition: color 0.3s; }
+        .close:hover { color: #2d3748; }
+        pre { background: #f7fafc; padding: 20px; border-radius: 10px; overflow-x: auto; border: 1px solid #e2e8f0; }
+        .loading { text-align: center; padding: 60px; }
+        .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .chat-container { background: #f7fafc; border-radius: 15px; padding: 25px; margin-top: 25px; border: 2px solid #e2e8f0; }
+        .chat-messages { max-height: 450px; overflow-y: auto; margin-bottom: 20px; }
+        .chat-message { padding: 15px; margin: 15px 0; border-radius: 12px; }
+        .chat-user { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: right; }
+        .chat-ai { background: white; border: 2px solid #e2e8f0; }
+        .chat-input { display: flex; gap: 12px; }
+        .chat-input input { flex: 1; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; }
+        .chat-input button { padding: 14px 24px; }
+        .filter-bar { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .filter-bar select { padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>🤖 Job Application Bot</h1>
+                    <p>Scraping automatique + Génération IA de candidatures</p>
+                </div>
+                <a href="/config" class="btn btn-primary" style="text-decoration: none;">⚙️ Configuration</a>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('search')">🔍 Recherche</button>
+            <button class="tab" onclick="showTab('applications')">📁 Candidatures Générées</button>
+        </div>
+
+        <div id="search-tab">
+            <div class="search-panel">
+                <h2 style="margin-bottom: 20px;">Rechercher des Offres</h2>
+                
+                <div class="form-group">
+                    <label>Poste recherché</label>
+                    <input type="text" id="keywords" value="Data Engineer Alternance" placeholder="Ex: Data Scientist, ML Engineer...">
+                </div>
+
+                <div class="form-group">
+                    <label>Localisation</label>
+                    <input type="text" id="location" value="France" placeholder="Ex: Paris, Lyon, Remote...">
+                </div>
+
+                <div class="form-group">
+                    <label>Type de contrat</label>
+                    <select id="contract_type">
+                        <option value="Alternance">Alternance</option>
+                        <option value="CDI">CDI</option>
+                        <option value="CDD">CDD</option>
+                        <option value="Stage">Stage</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="startScraping()">🚀 Lancer la Recherche</button>
+                
+                <div id="status" class="status" style="display:none;"></div>
+            </div>
+
+            <div id="jobs-container">
+                <div class="filter-bar">
+                    <label>Trier par:</label>
+                    <select id="sort-filter" onchange="sortJobs()">
+                        <option value="relevance">Pertinence (IA)</option>
+                        <option value="date">Date</option>
+                        <option value="company">Entreprise</option>
+                    </select>
+                    <label style="margin-left: 20px;">Filtrer:</label>
+                    <select id="relevance-filter" onchange="filterJobs()">
+                        <option value="all">Toutes les offres</option>
+                        <option value="high">Haute pertinence uniquement</option>
+                        <option value="medium">Moyenne et haute</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="applications-tab" style="display:none;">
+            <div class="applications-list">
+                <h2 style="margin-bottom: 20px;">Candidatures Générées</h2>
+                <div id="applications-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        // Vérifier authentification
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        // Ajouter token à toutes les requêtes
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            if (args[1]) {
+                args[1].headers = args[1].headers || {};
+                args[1].headers['Authorization'] = `Bearer ${token}`;
+            } else {
+                args[1] = { headers: { 'Authorization': `Bearer ${token}` } };
+            }
+            return originalFetch.apply(this, args);
+        };
+
+        let currentJobs = [];
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'search') {
+                document.getElementById('search-tab').style.display = 'block';
+                document.getElementById('applications-tab').style.display = 'none';
+            } else {
+                document.getElementById('search-tab').style.display = 'none';
+                document.getElementById('applications-tab').style.display = 'block';
+                loadApplications();
+            }
+        }
+
+        async function startScraping() {
+            const keywords = document.getElementById('keywords').value;
+            const location = document.getElementById('location').value;
+            const contract_type = document.getElementById('contract_type').value;
+
+            const status = document.getElementById('status');
+            status.style.display = 'block';
+            status.innerHTML = '<div class="loading"><div class="spinner"></div><p>Scraping en cours...</p></div>';
+
+            await fetch('/api/scrape', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({keywords, location, contract_type})
+            });
+
+            checkStatus();
+        }
+
+        async function checkStatus() {
+            const response = await fetch('/api/status');
+            const status = await response.json();
+            
+            document.getElementById('status').innerHTML = `<p>${status.progress}</p>`;
+
+            if (status.running) {
+                setTimeout(checkStatus, 2000);
+            } else {
+                loadJobs();
+            }
+        }
+
+        async function loadJobs() {
+            const response = await fetch('/api/jobs');
+            currentJobs = await response.json();
+            
+            // Calculer scores de pertinence avec IA
+            await calculateRelevanceScores();
+            
+            displayJobs();
+        }
+
+        async function calculateRelevanceScores() {
+            console.log('Calcul des scores de pertinence...');
+            
+            const response = await fetch('/api/calculate-relevance', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({jobs: currentJobs})
+            });
+            
+            const scored = await response.json();
+            currentJobs = scored.jobs;
+        }
+
+        function displayJobs() {
+            // Trier par pertinence par défaut
+            currentJobs.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+            
+            const container = document.getElementById('jobs-container');
+            const filterBar = container.querySelector('.filter-bar');
+            
+            let html = filterBar.outerHTML;
+            html += '<h2 style="margin: 20px 0;">🎯 Offres Trouvées (' + currentJobs.length + ')</h2><div class="jobs-grid">' +
+                currentJobs.map((job, index) => {
+                    const score = job.relevance_score || 50;
+                    const relevanceClass = score >= 75 ? 'high' : score >= 50 ? 'medium' : 'low';
+                    const relevanceText = score >= 75 ? '🔥 Excellent match' : score >= 50 ? '✅ Bon match' : '💡 Match moyen';
+                    
+                    return `
+                    <div class="job-card" data-relevance="${relevanceClass}">
+                        <div class="relevance-badge relevance-${relevanceClass}">
+                            ${Math.round(score)}% ${relevanceText}
+                        </div>
+                        <div class="job-header">
+                            <div>
+                                <div class="job-title">${job.title}</div>
+                                <div class="job-company">🏢 ${job.company}</div>
+                                <div class="job-location">📍 ${job.location}</div>
+                            </div>
+                        </div>
+                        <span class="job-source">${job.source}</span>
+                        <div class="job-actions">
+                            <button class="btn btn-success" onclick="generateApplication(${index})">✨ Générer Candidature</button>
+                            <a href="${job.link}" target="_blank" class="btn btn-primary">🔗 Voir l'offre</a>
+                        </div>
+                    </div>
+                `}).join('') + '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        function sortJobs() {
+            const sortBy = document.getElementById('sort-filter').value;
+            
+            if (sortBy === 'relevance') {
+                currentJobs.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+            } else if (sortBy === 'date') {
+                currentJobs.sort((a, b) => new Date(b.scraped_at) - new Date(a.scraped_at));
+            } else if (sortBy === 'company') {
+                currentJobs.sort((a, b) => a.company.localeCompare(b.company));
+            }
+            
+            displayJobs();
+        }
+
+        function filterJobs() {
+            const filter = document.getElementById('relevance-filter').value;
+            const allCards = document.querySelectorAll('.job-card');
+            
+            allCards.forEach(card => {
+                const relevance = card.dataset.relevance;
+                
+                if (filter === 'all') {
+                    card.style.display = 'block';
+                } else if (filter === 'high' && relevance === 'high') {
+                    card.style.display = 'block';
+                } else if (filter === 'medium' && (relevance === 'high' || relevance === 'medium')) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        async function generateApplication(index) {
+            if (!confirm('Générer la candidature pour cette offre ?')) return;
+
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><p>Génération en cours...</p></div>';
+
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({job_index: index})
+            });
+
+            const result = await response.json();
+            
+            modalBody.innerHTML = `
+                <h2>✅ Candidature Générée</h2>
+                <p><strong>Score de compatibilité:</strong> <span class="score score-${result.match_score > 70 ? 'high' : result.match_score > 50 ? 'medium' : 'low'}">${result.match_score}/100</span></p>
+                <p><strong>Dossier:</strong> ${result.folder}</p>
+                
+                <div style="margin: 20px 0;">
+                    <button class="btn btn-primary" onclick="openChat('${result.folder}')">💬 Améliorer avec l'IA</button>
+                    <a href="/api/download/${result.folder}/cv" class="btn btn-success" style="margin-left: 10px;">📄 Télécharger CV PDF</a>
+                    <a href="/api/download/${result.folder}/letter" class="btn btn-success" style="margin-left: 10px;">✉️ Télécharger Lettre PDF</a>
+                </div>
+                
+                ${result.is_latex ? `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #ffc107;">
+                    <strong>📝 CV LaTeX généré</strong><br>
+                    Le CV a été généré en LaTeX pour un rendu professionnel. Téléchargez le PDF ci-dessus pour voir le résultat final.
+                </div>
+                ` : ''}
+                
+                <h3 style="margin-top: 20px;">CV Adapté ${result.is_latex ? '(Code LaTeX)' : ''}</h3>
+                <pre id="cv-content" style="max-height: 400px; overflow-y: auto;">${result.cv}</pre>
+                <h3 style="margin-top: 20px;">Lettre de Motivation</h3>
+                <pre id="letter-content">${result.letter}</pre>
+            `;
+        }
+
+        async function loadApplications() {
+            const response = await fetch('/api/applications');
+            const apps = await response.json();
+            
+            const list = document.getElementById('applications-list');
+            list.innerHTML = apps.map(app => `
+                <div class="app-item">
+                    <div>
+                        <strong>${app.company}</strong> - ${app.title}<br>
+                        <small>${new Date(app.date).toLocaleString('fr-FR')}</small>
+                    </div>
+                    <div>
+                        <span class="score score-${app.score > 70 ? 'high' : app.score > 50 ? 'medium' : 'low'}">${app.score}/100</span>
+                        <button class="btn btn-primary" onclick="viewApplication('${app.folder}')" style="margin-left: 10px;">👁️ Voir</button>
+                        <a href="/api/download/${app.folder}/cv" class="btn btn-success" style="margin-left: 10px;">📄 CV PDF</a>
+                        <a href="/api/download/${app.folder}/letter" class="btn btn-success" style="margin-left: 10px;">✉️ Lettre PDF</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function viewApplication(folder) {
+            const response = await fetch(`/api/application/${folder}`);
+            const app = await response.json();
+            
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            modal.style.display = 'block';
+            
+            modalBody.innerHTML = `
+                <h2>${app.info.job.company} - ${app.info.job.title}</h2>
+                <p><strong>Score:</strong> ${app.info.match_analysis.score}/100</p>
+                
+                <div style="margin: 20px 0;">
+                    <a href="/api/download/${folder}/cv" class="btn btn-success">📄 Télécharger CV PDF</a>
+                    <a href="/api/download/${folder}/letter" class="btn btn-success" style="margin-left: 10px;">✉️ Télécharger Lettre PDF</a>
+                </div>
+                
+                ${app.is_latex ? `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #ffc107;">
+                    <strong>📝 CV LaTeX</strong><br>
+                    Ce CV a été généré en LaTeX. Téléchargez le PDF pour voir le rendu professionnel.
+                </div>
+                ` : ''}
+                
+                <h3 style="margin-top: 20px;">CV ${app.is_latex ? '(Code LaTeX)' : ''}</h3>
+                <pre style="max-height: 400px; overflow-y: auto;">${app.cv}</pre>
+                <h3 style="margin-top: 20px;">Lettre</h3>
+                <pre>${app.letter}</pre>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('modal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        let currentFolder = null;
+        let chatHistory = [];
+
+        function openChat(folder) {
+            currentFolder = folder;
+            chatHistory = [];
+            
+            const chatHtml = `
+                <div class="chat-container">
+                    <h3>💬 Conversation avec l'IA</h3>
+                    <p>Demandez des modifications sur le CV ou la lettre</p>
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chat-input" placeholder="Ex: Rends la lettre plus enthousiaste..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+                        <button class="btn btn-primary" onclick="sendChatMessage()">➡️ Envoyer</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-body').insertAdjacentHTML('beforeend', chatHtml);
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const messagesDiv = document.getElementById('chat-messages');
+            
+            // Afficher message utilisateur
+            messagesDiv.innerHTML += `<div class="chat-message chat-user">${message}</div>`;
+            input.value = '';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            // Envoyer à l'API
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    folder: currentFolder,
+                    message: message,
+                    history: chatHistory
+                })
+            });
+
+            const result = await response.json();
+            
+            // Afficher réponse IA
+            messagesDiv.innerHTML += `<div class="chat-message chat-ai">${result.response}</div>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            chatHistory.push({user: message, ai: result.response});
+
+            // Mettre à jour le contenu si modifié
+            if (result.updated_cv) {
+                document.getElementById('cv-content').textContent = result.updated_cv;
+            }
+            if (result.updated_letter) {
+                document.getElementById('letter-content').textContent = result.updated_letter;
+            }
+        }
+    </script>
+</body>
+</html>

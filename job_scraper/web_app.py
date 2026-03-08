@@ -1,0 +1,474 @@
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+import json
+import os
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).parent))
+
+from scrapers.universal_scraper import UniversalJobScraper
+from scrapers.adaptive_scraper import AdaptiveScraper
+from scrapers.sota_scraper import SOTAScraper
+from ai_adapters.groq_multi_agent import GroqMultiAgentAdapter
+from ai_adapters.latex_parser import LaTeXParser
+from ai_adapters.profile_analyzer import ProfileAnalyzer
+from ai_adapters.pdf_generator import PDFGenerator
+from utils.user_manager import UserManager
+import configparser
+from datetime import datetime
+import threading
+from functools import wraps
+
+app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
+
+# User Manager
+user_manager = UserManager()
+
+# État global par utilisateur
+user_sessions = {}
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        username = user_manager.verify_token(token)
+        
+        if not username:
+            return jsonify({'error': 'Non autorisé'}), 401
+        
+        request.username = username
+        return f(*args, **kwargs)
+    return decorated
+
+def load_config():
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    return config
+
+# Routes d'authentification
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.json
+    result = user_manager.register(
+        data.get('username'),
+        data.get('password'),
+        data.get('email')
+    )
+    return jsonify(result)
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.json
+    result = user_manager.login(
+        data.get('username'),
+        data.get('password')
+    )
+    return jsonify(result)
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    result = user_manager.logout(token)
+    return jsonify(result)
+
+@app.route('/')
+def index():
+    # Rediriger vers login si pas connecté
+    return render_template('dashboard.html')
+
+@app.route('/config')
+def config_page():
+    return render_template('config.html')
+
+@app.route('/api/config', methods=['GET', 'POST'])
+@require_auth
+def manage_config():
+    username = request.username
+    
+    if request.method == 'GET':
+        config = user_manager.get_user_config(username)
+        return jsonify(config)
+    
+    else:  # POST
+        data = request.json
+        result = user_manager.update_user_config(username, data)
+        return jsonify(result)
+
+@app.route('/api/scrape', methods=['POST'])
+def scrape_jobs():
+    global current_jobs, scraping_status
+    
+    data = request.json
+    keywords = data.get('keywords', 'Data Engineer')
+    location = data.get('location', 'France')
+    contract_type = data.get('contract_type', 'Alternance')
+    
+    def run_scraping():
+        global current_jobs, scraping_status
+        scraping_status = {"running": True, "progress": "Scraping sites d'emploi..."}
+        
+        try:
+            # Scraping sites d'emploi
+            # scraper = UniversalJobScraper(headless=True)
+            # current_jobs = scraper.scrape_all(keywords, location, contract_type)
+            # scraper.close()
+            
+            # Scraping sites carrières avec IA Vision
+            scraping_status = {"running": True, "progress": "Scraping sites entreprises (IA Vision)..."}
+            adaptive = AdaptiveScraper(headless=True)
+            corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
+            adaptive.close()
+            
+            # Combiner
+            current_jobs.extend(corporate_jobs)
+            
+            # Dédupliquer
+            seen = set()
+            unique_jobs = []
+            for job in current_jobs:
+                key = f"{job['title']}_{job['company']}"
+                if key not in seen:
+                    seen.add(key)
+                    unique_jobs.append(job)
+            
+            current_jobs = unique_jobs
+            
+            # Sauvegarder
+            with open('data/jobs_latest.json', 'w', encoding='utf-8') as f:
+                json.dump(current_jobs, f, ensure_ascii=False, indent=2)
+            
+            scraping_status = {"running": False, "progress": f"✓ {len(current_jobs)} offres trouvées"}
+        except Exception as e:
+            scraping_status = {"running": False, "progress": f"❌ Erreur: {str(e)}"}
+    
+    thread = threading.Thread(target=run_scraping)
+    thread.start()
+    
+    return jsonify({"status": "started"})
+
+@app.route('/api/jobs')
+def get_jobs():
+    return jsonify(current_jobs)
+
+@app.route('/api/status')
+def get_status():
+    return jsonify(scraping_status)
+
+@app.route('/api/generate', methods=['POST'])
+def generate_application():
+    data = request.json
+    job_index = data.get('job_index')
+    
+    if job_index >= len(current_jobs):
+        return jsonify({"error": "Job not found"}), 404
+    
+    job = current_jobs[job_index]
+    
+    # Charger config
+    config = load_config()
+    groq = GroqMultiAgentAdapter(config['API']['groq_api_key'])
+    profile = dict(config['PROFILE'])
+    background = dict(config['BACKGROUND']) if 'BACKGROUND' in config else {}
+    
+    # Analyser GitHub et Portfolio
+    print("  🔍 Analyse GitHub et Portfolio...")
+    analyzer = ProfileAnalyzer(profile['github'], profile['portfolio'])
+    profile_data = analyzer.get_full_profile()
+    profile['analysis'] = profile_data.get('combined_summary', '')
+    
+    # Charger CV
+    cv_path = config['CV_PATH'].get('base_cv', 'data/cv_base.tex')
+    with open(cv_path, 'r', encoding='utf-8') as f:
+        cv_content = f.read()
+    
+    if cv_path.endswith('.tex'):
+        cv_text = LaTeXParser.extract_text(cv_content)
+    else:
+        cv_text = cv_content
+    
+    # Charger lettre de base
+    letter_path = config['CV_PATH'].get('base_cover_letter', 'data/lettre_motivation_base.txt')
+    with open(letter_path, 'r', encoding='utf-8') as f:
+        letter_base = f.read()
+    
+    # Récupérer détails offre
+    scraper = UniversalJobScraper(headless=True)
+    job['description'] = scraper.get_job_details(job['link'])
+    scraper.close()
+    
+    # Analyser compatibilité
+    match = groq.analyze_job_match(cv_text, job['description'])
+    
+    # Générer CV adapté
+    adapted_cv = groq.generate_cv_adaptation(cv_text, job['description'], profile, background)
+    
+    # Sauvegarder en LaTeX si le CV de base est en LaTeX
+    if cv_path.endswith('.tex'):
+        # Nettoyer le code LaTeX généré (enlever les balises markdown si présentes)
+        adapted_cv = adapted_cv.replace('```latex', '').replace('```', '').strip()
+        cv_filename = 'cv_adapted.tex'
+    else:
+        cv_filename = 'cv_adapted.md'
+    
+    # Générer lettre
+    cover_letter = groq.generate_cover_letter_from_base(job, profile, adapted_cv, letter_base, background)
+    
+    # Sauvegarder
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    company_clean = job['company'].replace(' ', '_')[:30]
+    folder = Path(f'data/applications/{timestamp}_{company_clean}')
+    folder.mkdir(parents=True, exist_ok=True)
+    
+    # Sauvegarder Markdown ou LaTeX
+    with open(folder / cv_filename, 'w', encoding='utf-8') as f:
+        f.write(adapted_cv)
+    
+    with open(folder / 'cover_letter.txt', 'w', encoding='utf-8') as f:
+        f.write(cover_letter)
+    
+    # Générer PDFs
+    print("  📄 Génération des PDFs...")
+    pdf_gen = PDFGenerator()
+    
+    # Si LaTeX, compiler directement, sinon convertir depuis Markdown
+    if cv_path.endswith('.tex'):
+        cv_pdf = pdf_gen.compile_latex_to_pdf(adapted_cv, str(folder / 'cv_adapted.pdf'))
+    else:
+        cv_pdf = pdf_gen.generate_cv_pdf(adapted_cv, str(folder / 'cv_adapted.pdf'))
+    
+    letter_pdf = pdf_gen.generate_letter_pdf(cover_letter, profile, str(folder / 'cover_letter.pdf'))
+    
+    with open(folder / 'job_info.json', 'w', encoding='utf-8') as f:
+        json.dump({
+            'job': job,
+            'match_analysis': match,
+            'generated_at': datetime.now().isoformat()
+        }, f, ensure_ascii=False, indent=2)
+    
+    return jsonify({
+        "success": True,
+        "folder": str(folder.name),
+        "match_score": match.get('score', 0),
+        "cv": adapted_cv,
+        "letter": cover_letter,
+        "is_latex": cv_path.endswith('.tex')
+    })
+
+@app.route('/api/applications')
+def list_applications():
+    apps_dir = Path('data/applications')
+    if not apps_dir.exists():
+        return jsonify([])
+    
+    applications = []
+    for folder in sorted(apps_dir.iterdir(), reverse=True):
+        if folder.is_dir():
+            info_file = folder / 'job_info.json'
+            if info_file.exists():
+                with open(info_file, 'r', encoding='utf-8') as f:
+                    info = json.load(f)
+                    applications.append({
+                        'folder': folder.name,
+                        'company': info['job']['company'],
+                        'title': info['job']['title'],
+                        'score': info['match_analysis'].get('score', 0),
+                        'date': info['generated_at']
+                    })
+    
+    return jsonify(applications)
+
+@app.route('/api/application/<folder_name>')
+def get_application(folder_name):
+    folder = Path(f'data/applications/{folder_name}')
+    
+    # Détecter le type de CV
+    cv_file = folder / 'cv_adapted.tex' if (folder / 'cv_adapted.tex').exists() else folder / 'cv_adapted.md'
+    
+    with open(cv_file, 'r', encoding='utf-8') as f:
+        cv = f.read()
+    
+    with open(folder / 'cover_letter.txt', 'r', encoding='utf-8') as f:
+        letter = f.read()
+    
+    with open(folder / 'job_info.json', 'r', encoding='utf-8') as f:
+        info = json.load(f)
+    
+    return jsonify({
+        'cv': cv,
+        'letter': letter,
+        'info': info,
+        'is_latex': cv_file.suffix == '.tex'
+    })
+
+@app.route('/api/calculate-relevance', methods=['POST'])
+def calculate_relevance():
+    data = request.json
+    jobs = data.get('jobs', [])
+    
+    config = load_config()
+    groq = GroqMultiAgentAdapter(config['API']['groq_api_key'])
+    profile = dict(config['PROFILE'])
+    background = dict(config['BACKGROUND']) if 'BACKGROUND' in config else {}
+    
+    # Créer profil candidat pour comparaison
+    candidate_profile = f"""
+FORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}
+SPÉCIALISATION: {background.get('specialisation', '')}
+COMPÉTENCES: {background.get('competences_cles', '')}
+PROJETS: {background.get('projets_majeurs', '')}
+MOTIVATION: {background.get('motivation', '')}
+OBJECTIFS: {background.get('objectifs', '')}
+"""
+    
+    # Calculer score pour chaque offre
+    for job in jobs:
+        try:
+            # Utiliser IA pour scorer
+            prompt = f"""Analyse la pertinence de cette offre pour ce candidat. Note de 0 à 100.
+
+CANDIDAT:
+{candidate_profile}
+
+OFFRE:
+Titre: {job['title']}
+Entreprise: {job['company']}
+Source: {job['source']}
+
+Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
+            
+            score_text = groq._call_agent(
+                model=groq.models["fast"],
+                system="Tu es un expert en matching candidat/offre. Réponds uniquement avec un nombre.",
+                prompt=prompt,
+                max_tokens=10
+            )
+            
+            # Extraire le score
+            import re
+            numbers = re.findall(r'\d+', score_text)
+            score = int(numbers[0]) if numbers else 50
+            score = max(0, min(100, score))  # Limiter entre 0 et 100
+            
+            job['relevance_score'] = score
+            
+        except:
+            job['relevance_score'] = 50  # Score par défaut
+    
+    # Trier par score
+    jobs.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
+    
+    return jsonify({'jobs': jobs})
+
+@app.route('/api/chat', methods=['POST'])
+def chat_with_ai():
+    data = request.json
+    folder_name = data.get('folder')
+    message = data.get('message')
+    history = data.get('history', [])
+    
+    folder = Path(f'data/applications/{folder_name}')
+    
+    # Charger les documents actuels
+    with open(folder / 'cv_adapted.md', 'r', encoding='utf-8') as f:
+        cv = f.read()
+    
+    with open(folder / 'cover_letter.txt', 'r', encoding='utf-8') as f:
+        letter = f.read()
+    
+    # Charger config
+    config = load_config()
+    groq = GroqMultiAgentAdapter(config['API']['groq_api_key'])
+    
+    # Construire le contexte
+    context = f"""CV ACTUEL:
+{cv[:1000]}
+
+LETTRE ACTUELLE:
+{letter[:1000]}
+
+HISTORIQUE CONVERSATION:
+{json.dumps(history[-3:], ensure_ascii=False)}
+"""
+    
+    # Appeler l'IA
+    response = groq._call_agent(
+        model=groq.models["creative"],
+        system="Tu es un assistant qui aide à améliorer des CV et lettres de motivation. Tu écoutes les demandes et proposes des modifications précises.",
+        prompt=f"""{context}
+
+DEMANDE UTILISATEUR: {message}
+
+Réponds de manière concise et propose des modifications si nécessaire. Si l'utilisateur demande une modification, génère le nouveau contenu.""",
+        max_tokens=1000
+    )
+    
+    # Détecter si modification demandée
+    updated_cv = None
+    updated_letter = None
+    
+    if any(word in message.lower() for word in ['modifie', 'change', 'améliore', 'réécris', 'refais']):
+        if 'cv' in message.lower():
+            # Régénérer CV
+            updated_cv = groq._call_agent(
+                model=groq.models["balanced"],
+                system="Tu es un expert en CV.",
+                prompt=f"""CV ACTUEL:
+{cv}
+
+MODIFICATION DEMANDÉE: {message}
+
+Génère le CV modifié en Markdown:""",
+                max_tokens=2000
+            )
+            
+            # Sauvegarder
+            with open(folder / 'cv_adapted.md', 'w', encoding='utf-8') as f:
+                f.write(updated_cv)
+        
+        if 'lettre' in message.lower():
+            # Régénérer lettre
+            updated_letter = groq._call_agent(
+                model=groq.models["creative"],
+                system="Tu es un expert en lettres de motivation. Écris comme un HUMAIN.",
+                prompt=f"""LETTRE ACTUELLE:
+{letter}
+
+MODIFICATION DEMANDÉE: {message}
+
+Génère la lettre modifiée:""",
+                max_tokens=1000
+            )
+            
+            # Sauvegarder
+            with open(folder / 'cover_letter.txt', 'w', encoding='utf-8') as f:
+                f.write(updated_letter)
+    
+    return jsonify({
+        'response': response,
+        'updated_cv': updated_cv,
+        'updated_letter': updated_letter
+    })
+
+@app.route('/api/download/<folder_name>/<doc_type>')
+def download_pdf(folder_name, doc_type):
+    folder = Path(f'data/applications/{folder_name}')
+    
+    if doc_type == 'cv':
+        file_path = folder / 'cv_adapted.pdf'
+    elif doc_type == 'letter':
+        file_path = folder / 'cover_letter.pdf'
+    else:
+        return jsonify({"error": "Invalid type"}), 400
+    
+    if not file_path.exists():
+        return jsonify({"error": "File not found"}), 404
+    
+    return send_file(file_path, as_attachment=True)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)

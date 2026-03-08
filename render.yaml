@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: nexus-os
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: |
+      pip install -r job_scraper/requirements.txt
+      apt-get update && apt-get install -y chromium chromium-driver
+    startCommand: cd job_scraper && python web_app.py
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.9.0
