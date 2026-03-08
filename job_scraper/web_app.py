@@ -27,6 +27,7 @@ user_manager = UserManager()
 
 # Database Manager (si PostgreSQL disponible)
 try:
+    from utils.database_manager import DatabaseManager
     db_manager = DatabaseManager()
     use_database = True
 except:
@@ -35,6 +36,8 @@ except:
 
 # État global par utilisateur
 user_sessions = {}
+current_jobs = []
+scraping_status = {"running": False, "progress": ""}
 
 def require_auth(f):
     @wraps(f)
