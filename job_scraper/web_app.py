@@ -377,22 +377,20 @@ def calculate_relevance():
         groq = GroqMultiAgentAdapter(api_key)
         profile = user_config.get('profile', {})
         background = user_config.get('background', {})
-    
-    # Créer profil candidat pour comparaison
-    candidate_profile = f"""
-FORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}
+        
+        # Créer profil candidat pour comparaison
+        candidate_profile = f"""FORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}
 SPÉCIALISATION: {background.get('specialisation', '')}
 COMPÉTENCES: {background.get('competences_cles', '')}
 PROJETS: {background.get('projets_majeurs', '')}
 MOTIVATION: {background.get('motivation', '')}
-OBJECTIFS: {background.get('objectifs', '')}
-"""
-    
-    # Calculer score pour chaque offre
-    for job in jobs:
-        try:
-            # Utiliser IA pour scorer
-            prompt = f"""Analyse la pertinence de cette offre pour ce candidat. Note de 0 à 100.
+OBJECTIFS: {background.get('objectifs', '')}"""
+        
+        # Calculer score pour chaque offre
+        for job in jobs:
+            try:
+                # Utiliser IA pour scorer
+                prompt = f"""Analyse la pertinence de cette offre pour ce candidat. Note de 0 à 100.
 
 CANDIDAT:
 {candidate_profile}
@@ -403,31 +401,27 @@ Entreprise: {job['company']}
 Source: {job['source']}
 
 Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
-            
-            score_text = groq._call_agent(
-                model=groq.models["fast"],
-                system="Tu es un expert en matching candidat/offre. Réponds uniquement avec un nombre.",
-                prompt=prompt,
-                max_tokens=10
-            )
-            
-            # Extraire le score
-            import re
-            numbers = re.findall(r'\d+', score_text)
-            score = int(numbers[0]) if numbers else 50
-            score = max(0, min(100, score))  # Limiter entre 0 et 100
-            
-            job['relevance_score'] = score
-            
-        except Exception as e:
-            job['relevance_score'] = 50
+                
+                score_text = groq._call_agent(
+                    model=groq.models["fast"],
+                    system="Tu es un expert en matching candidat/offre. Réponds uniquement avec un nombre.",
+                    prompt=prompt,
+                    max_tokens=10
+                )
+                
+                # Extraire le score
+                import re
+                numbers = re.findall(r'\d+', score_text)
+                score = int(numbers[0]) if numbers else 50
+                score = max(0, min(100, score))
+                
+                job['relevance_score'] = score
+                
+            except Exception as e:
+                job['relevance_score'] = 50
     
     except Exception as e:
         # Erreur globale, scores par défaut
-        for job in jobs:
-            job['relevance_score'] = 50
-    except Exception as e:
-        # En cas d'erreur globale, scores par défaut
         for job in jobs:
             job['relevance_score'] = 50
     
