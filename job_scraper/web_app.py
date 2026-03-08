@@ -54,7 +54,15 @@ def require_auth(f):
 
 def load_config():
     config = configparser.ConfigParser()
-    config.read('config.ini')
+    config_path = 'config.ini'
+    if os.path.exists(config_path):
+        config.read(config_path)
+    else:
+        # Config par défaut si fichier absent
+        config['API'] = {'groq_api_key': os.getenv('GROQ_API_KEY', ''), 'gemini_api_key': os.getenv('GEMINI_API_KEY', ''), 'openai_api_key': os.getenv('OPENAI_API_KEY', '')}
+        config['PROFILE'] = {'github': '', 'portfolio': ''}
+        config['BACKGROUND'] = {}
+        config['CV_PATH'] = {'base_cv': 'data/cv_base.md', 'base_cover_letter': 'data/lettre_motivation_base.txt'}
     return config
 
 # Routes d'authentification
@@ -100,18 +108,26 @@ def config_page():
     return render_template('config.html')
 
 @app.route('/api/config', methods=['GET', 'POST'])
+@require_auth
 def manage_config():
-    # Mode sans auth pour démo
+    username = request.username
+    
     if request.method == 'GET':
-        # Retourner config par défaut
-        return jsonify({
-            'api_keys': {'groq': '', 'gemini': '', 'openai': ''},
-            'ai_provider': 'gemini',
-            'profile': {},
-            'background': {}
-        })
-    else:
-        return jsonify({'success': True})
+        config = user_manager.get_user_config(username)
+        if not config:
+            # Config par défaut
+            config = {
+                'api_keys': {'groq': '', 'gemini': '', 'openai': ''},
+                'ai_provider': 'gemini',
+                'profile': {},
+                'background': {}
+            }
+        return jsonify(config)
+    
+    else:  # POST
+        data = request.json
+        result = user_manager.update_user_config(username, data)
+        return jsonify(result)
 
 @app.route('/api/scrape', methods=['POST'])
 def scrape_jobs():
@@ -126,9 +142,17 @@ def scrape_jobs():
         scraping_status = {"running": True, "progress": "Scraping sites d'emploi..."}
         
         try:
-            # Sauvegarder la recherche en DB (désactivé pour démo)
+            # Sauvegarder la recherche en DB
             search_id = None
             user_id = None
+            if use_database:
+                # Récupérer user_id depuis username
+                from utils.user_manager import UserManager
+                um = UserManager()
+                result = um.login(username, '')  # Juste pour récupérer user_id
+                if result.get('user_id'):
+                    user_id = result['user_id']
+                    search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
             
             # Scraping sites carrières avec IA Vision
             scraping_status = {"running": True, "progress": "Scraping sites entreprises (IA Vision)..."}
@@ -147,7 +171,9 @@ def scrape_jobs():
                     seen.add(key)
                     unique_jobs.append(job)
                     
-                    # Sauvegarder en DB (désactivé pour démo)
+                    # Sauvegarder en DB
+                    if use_database and search_id and user_id:
+                        db_manager.save_job_offer(search_id, user_id, job)
             
             current_jobs = unique_jobs
             
@@ -319,14 +345,35 @@ def get_application(folder_name):
     })
 
 @app.route('/api/calculate-relevance', methods=['POST'])
+@require_auth
 def calculate_relevance():
+    username = request.username
     data = request.json
     jobs = data.get('jobs', [])
     
-    config = load_config()
-    groq = GroqMultiAgentAdapter(config['API']['groq_api_key'])
-    profile = dict(config['PROFILE'])
-    background = dict(config['BACKGROUND']) if 'BACKGROUND' in config else {}
+    # Récupérer config utilisateur depuis DB
+    user_config = user_manager.get_user_config(username)
+    if not user_config:
+        # Scores par défaut si pas de config
+        for job in jobs:
+            job['relevance_score'] = 50
+        return jsonify({'jobs': jobs})
+    
+    # Récupérer clé API
+    api_keys = user_config.get('api_keys', {})
+    ai_provider = user_config.get('ai_provider', 'gemini')
+    api_key = api_keys.get(ai_provider) or api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        # Pas de clé API, scores par défaut
+        for job in jobs:
+            job['relevance_score'] = 50
+        return jsonify({'jobs': jobs})
+    
+    try:
+        groq = GroqMultiAgentAdapter(api_key)
+        profile = user_config.get('profile', {})
+        background = user_config.get('background', {})
     
     # Créer profil candidat pour comparaison
     candidate_profile = f"""
@@ -369,8 +416,17 @@ Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
             
             job['relevance_score'] = score
             
-        except:
-            job['relevance_score'] = 50  # Score par défaut
+        except Exception as e:
+            job['relevance_score'] = 50
+    
+    except Exception as e:
+        # Erreur globale, scores par défaut
+        for job in jobs:
+            job['relevance_score'] = 50
+    except Exception as e:
+        # En cas d'erreur globale, scores par défaut
+        for job in jobs:
+            job['relevance_score'] = 50
     
     # Trier par score
     jobs.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)

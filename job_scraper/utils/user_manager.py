@@ -166,5 +166,13 @@ class UserManager:
         """Helper pour récupérer user_id depuis username"""
         if not self.use_db:
             return None
-        # Stocker en cache ou requête DB
-        return 1  # Simplifié pour l'instant
+        
+        # Requête DB pour récupérer user_id
+        cursor = self.db.conn.cursor()
+        cursor.execute(
+            'SELECT id FROM users WHERE username = %s' if self.db.use_postgres
+            else 'SELECT id FROM users WHERE username = ?',
+            (username,)
+        )
+        result = cursor.fetchone()
+        return result[0] if result else None
