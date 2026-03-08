@@ -5,6 +5,7 @@ Compatible avec l'ancien système JSON mais utilise PostgreSQL si disponible
 import os
 import secrets
 from datetime import datetime
+from pathlib import Path
 
 # Import conditionnel selon l'environnement
 try:

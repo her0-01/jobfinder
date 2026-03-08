@@ -13,6 +13,7 @@ from ai_adapters.latex_parser import LaTeXParser
 from ai_adapters.profile_analyzer import ProfileAnalyzer
 from ai_adapters.pdf_generator import PDFGenerator
 from utils.user_manager import UserManager
+from utils.database_manager import DatabaseManager
 import configparser
 from datetime import datetime
 import threading
@@ -23,6 +24,14 @@ app.config['JSON_AS_ASCII'] = False
 
 # User Manager
 user_manager = UserManager()
+
+# Database Manager (si PostgreSQL disponible)
+try:
+    db_manager = DatabaseManager()
+    use_database = True
+except:
+    db_manager = None
+    use_database = False
 
 # État global par utilisateur
 user_sessions = {}
@@ -99,8 +108,10 @@ def manage_config():
         return jsonify(result)
 
 @app.route('/api/scrape', methods=['POST'])
+@require_auth
 def scrape_jobs():
     global current_jobs, scraping_status
+    username = request.username
     
     data = request.json
     keywords = data.get('keywords', 'Data Engineer')
@@ -112,10 +123,14 @@ def scrape_jobs():
         scraping_status = {"running": True, "progress": "Scraping sites d'emploi..."}
         
         try:
-            # Scraping sites d'emploi
-            # scraper = UniversalJobScraper(headless=True)
-            # current_jobs = scraper.scrape_all(keywords, location, contract_type)
-            # scraper.close()
+            # Sauvegarder la recherche en DB
+            search_id = None
+            user_id = None
+            if use_database:
+                # Récupérer user_id
+                config = user_manager.get_user_config(username)
+                user_id = config.get('user_id', 1)  # Fallback
+                search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
             
             # Scraping sites carrières avec IA Vision
             scraping_status = {"running": True, "progress": "Scraping sites entreprises (IA Vision)..."}
@@ -123,7 +138,6 @@ def scrape_jobs():
             corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
             adaptive.close()
             
-            # Combiner
             current_jobs.extend(corporate_jobs)
             
             # Dédupliquer
@@ -134,10 +148,14 @@ def scrape_jobs():
                 if key not in seen:
                     seen.add(key)
                     unique_jobs.append(job)
+                    
+                    # Sauvegarder en DB
+                    if use_database and search_id and user_id:
+                        db_manager.save_job_offer(search_id, user_id, job)
             
             current_jobs = unique_jobs
             
-            # Sauvegarder
+            # Sauvegarder en JSON aussi (fallback)
             with open('data/jobs_latest.json', 'w', encoding='utf-8') as f:
                 json.dump(current_jobs, f, ensure_ascii=False, indent=2)
             
@@ -472,3 +490,89 @@ def download_pdf(folder_name, doc_type):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+
+
+# Nouvelles routes pour historique et statistiques
+@app.route('/api/history/searches')
+@require_auth
+def get_search_history():
+    """Récupère l'historique des recherches"""
+    if not use_database:
+        return jsonify([])
+    
+    username = request.username
+    config = user_manager.get_user_config(username)
+    user_id = config.get('user_id', 1)
+    
+    # TODO: Implémenter get_user_searches dans DatabaseManager
+    return jsonify([])
+
+@app.route('/api/history/offers')
+@require_auth
+def get_offers_history():
+    """Récupère l'historique des offres trouvées"""
+    if not use_database:
+        return jsonify([])
+    
+    username = request.username
+    config = user_manager.get_user_config(username)
+    user_id = config.get('user_id', 1)
+    
+    offers = db_manager.get_user_job_offers(user_id, limit=100)
+    return jsonify(offers)
+
+@app.route('/api/history/applications')
+@require_auth
+def get_applications_history():
+    """Récupère l'historique des candidatures"""
+    if not use_database:
+        return jsonify([])
+    
+    username = request.username
+    config = user_manager.get_user_config(username)
+    user_id = config.get('user_id', 1)
+    
+    applications = db_manager.get_user_applications(user_id, limit=50)
+    return jsonify(applications)
+
+@app.route('/api/stats')
+@require_auth
+def get_user_stats():
+    """Statistiques utilisateur"""
+    if not use_database:
+        return jsonify({
+            'total_searches': 0,
+            'total_offers': 0,
+            'total_applications': 0,
+            'avg_relevance_score': 0
+        })
+    
+    username = request.username
+    config = user_manager.get_user_config(username)
+    user_id = config.get('user_id', 1)
+    
+    offers = db_manager.get_user_job_offers(user_id, limit=1000)
+    applications = db_manager.get_user_applications(user_id, limit=1000)
+    
+    avg_score = sum(o.get('relevance_score', 0) for o in offers) / len(offers) if offers else 0
+    
+    return jsonify({
+        'total_searches': len(set(o.get('search_id') for o in offers)),
+        'total_offers': len(offers),
+        'total_applications': len(applications),
+        'avg_relevance_score': round(avg_score, 1),
+        'top_companies': _get_top_companies(offers),
+        'top_sources': _get_top_sources(offers)
+    })
+
+def _get_top_companies(offers):
+    """Top 5 entreprises"""
+    from collections import Counter
+    companies = [o.get('company') for o in offers if o.get('company')]
+    return [{'name': c, 'count': count} for c, count in Counter(companies).most_common(5)]
+
+def _get_top_sources(offers):
+    """Top 5 sources"""
+    from collections import Counter
+    sources = [o.get('source_site') for o in offers if o.get('source_site')]
+    return [{'name': s, 'count': count} for s, count in Counter(sources).most_common(5)]
