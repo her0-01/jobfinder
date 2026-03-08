@@ -130,7 +130,10 @@ def manage_config():
         return jsonify(result)
 
 @app.route('/api/scrape', methods=['POST'])
+@require_auth
 def scrape_jobs():
+    username = request.username
+    global current_jobs, scraping_status
     
     data = request.json
     keywords = data.get('keywords', 'Data Engineer')
