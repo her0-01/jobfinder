@@ -45,7 +45,9 @@ def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        print(f"🔐 Auth check - Token: {token[:20]}... exists: {bool(token)}")
         username = user_manager.verify_token(token)
+        print(f"🔐 Auth result - Username: {username}")
         
         if not username:
             return jsonify({'error': 'Non autorisé'}), 401
