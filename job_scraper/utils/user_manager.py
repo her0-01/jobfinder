@@ -19,6 +19,7 @@ except:
 
 class UserManager:
     def __init__(self, db_file='data/users.json'):
+        print(f"🔧 UserManager init - DATABASE_URL exists: {bool(os.getenv('DATABASE_URL'))}")
         if USE_DATABASE and os.getenv('DATABASE_URL'):
             try:
                 self.db = DatabaseManager()
