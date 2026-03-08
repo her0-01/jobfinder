@@ -20,8 +20,15 @@ except:
 class UserManager:
     def __init__(self, db_file='data/users.json'):
         if USE_DATABASE and os.getenv('DATABASE_URL'):
-            self.db = DatabaseManager()
-            self.use_db = True
+            try:
+                self.db = DatabaseManager()
+                self.use_db = True
+            except Exception as e:
+                print(f"Database init failed: {e}, falling back to JSON")
+                self.use_db = False
+                self.db_file = Path(db_file)
+                self.db_file.parent.mkdir(exist_ok=True)
+                self._init_db()
         else:
             # Fallback JSON
             self.use_db = False
@@ -71,7 +78,10 @@ class UserManager:
             result = self.db.authenticate_user(username, password)
             if result['success']:
                 token = secrets.token_urlsafe(32)
-                # Créer session dans DB
+                # Stocker session en mémoire pour l'instant (TODO: DB)
+                if not hasattr(self, '_sessions'):
+                    self._sessions = {}
+                self._sessions[token] = {'username': username, 'user_id': result['user']['id']}
                 return {'success': True, 'token': token, 'username': username, 'user_id': result['user']['id']}
             return result
         
@@ -91,8 +101,11 @@ class UserManager:
     
     def verify_token(self, token):
         if self.use_db:
-            # Vérifier dans DB
-            return token  # Simplifié pour l'instant
+            # Vérifier dans sessions mémoire
+            if not hasattr(self, '_sessions'):
+                self._sessions = {}
+            session = self._sessions.get(token)
+            return session['username'] if session else None
         
         db = self._load_db()
         return db['sessions'].get(token, {}).get('username')
