@@ -78,10 +78,14 @@ class UserManager:
             result = self.db.authenticate_user(username, password)
             if result['success']:
                 token = secrets.token_urlsafe(32)
-                # Stocker session en mémoire pour l'instant (TODO: DB)
-                if not hasattr(self, '_sessions'):
-                    self._sessions = {}
-                self._sessions[token] = {'username': username, 'user_id': result['user']['id']}
+                # Sauvegarder session en DB
+                cursor = self.db.conn.cursor()
+                cursor.execute(
+                    'INSERT INTO sessions (token, user_id) VALUES (%s, %s)' if self.db.use_postgres
+                    else 'INSERT INTO sessions (token, user_id) VALUES (?, ?)',
+                    (token, result['user']['id'])
+                )
+                self.db.conn.commit()
                 return {'success': True, 'token': token, 'username': username, 'user_id': result['user']['id']}
             return result
         
@@ -101,11 +105,19 @@ class UserManager:
     
     def verify_token(self, token):
         if self.use_db:
-            # Vérifier dans sessions mémoire
-            if not hasattr(self, '_sessions'):
-                self._sessions = {}
-            session = self._sessions.get(token)
-            return session['username'] if session else None
+            # Vérifier dans sessions DB
+            cursor = self.db.conn.cursor()
+            cursor.execute(
+                '''SELECT u.username FROM sessions s 
+                   JOIN users u ON s.user_id = u.id 
+                   WHERE s.token = %s''' if self.db.use_postgres
+                else '''SELECT u.username FROM sessions s 
+                        JOIN users u ON s.user_id = u.id 
+                        WHERE s.token = ?''',
+                (token,)
+            )
+            result = cursor.fetchone()
+            return result[0] if result else None
         
         db = self._load_db()
         return db['sessions'].get(token, {}).get('username')
