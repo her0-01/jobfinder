@@ -5,4 +5,4 @@ aptPkgs = ["chromium", "chromium-driver"]
 cmds = ["pip install -r job_scraper/requirements.txt"]
 
 [start]
-cmd = "cd job_scraper && python web_app.py"
+cmd = "python web_app.py"
