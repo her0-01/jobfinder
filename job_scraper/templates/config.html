@@ -153,6 +153,24 @@
     </div>
 
     <script>
+        // Vérifier authentification
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        // Ajouter token à toutes les requêtes
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            if (args[1]) {
+                args[1].headers = args[1].headers || {};
+                args[1].headers['Authorization'] = `Bearer ${token}`;
+            } else {
+                args[1] = { headers: { 'Authorization': `Bearer ${token}` } };
+            }
+            return originalFetch.apply(this, args);
+        };
+
         let currentProvider = 'groq';
 
         // Charger config au démarrage
