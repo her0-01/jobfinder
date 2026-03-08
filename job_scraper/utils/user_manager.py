@@ -23,8 +23,9 @@ class UserManager:
             try:
                 self.db = DatabaseManager()
                 self.use_db = True
+                print(f"✅ UserManager using PostgreSQL")
             except Exception as e:
-                print(f"Database init failed: {e}, falling back to JSON")
+                print(f"⚠️ UserManager falling back to JSON: {e}")
                 self.use_db = False
                 self.db_file = Path(db_file)
                 self.db_file.parent.mkdir(exist_ok=True)
@@ -35,6 +36,7 @@ class UserManager:
             self.db_file = Path(db_file)
             self.db_file.parent.mkdir(exist_ok=True)
             self._init_db()
+            print(f"ℹ️ UserManager using JSON file: {self.db_file}")
     
     def _init_db(self):
         """Initialiser la base de données JSON"""

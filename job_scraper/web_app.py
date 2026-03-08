@@ -30,7 +30,9 @@ try:
     from utils.database_manager import DatabaseManager
     db_manager = DatabaseManager()
     use_database = True
-except:
+    print("✅ PostgreSQL connected - Tables initialized")
+except Exception as e:
+    print(f"⚠️ PostgreSQL not available: {e}")
     db_manager = None
     use_database = False
 
