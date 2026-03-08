@@ -233,8 +233,20 @@
         }
 
         // Vérifier si déjà connecté
-        if (localStorage.getItem('token')) {
-            window.location.href = '/dashboard';
+        const token = localStorage.getItem('token');
+        if (token) {
+            // Vérifier si le token est valide
+            fetch('/api/config', {
+                headers: {'Authorization': `Bearer ${token}`}
+            }).then(res => {
+                if (res.ok) {
+                    window.location.href = '/dashboard';
+                } else {
+                    // Token invalide, le supprimer
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('username');
+                }
+            });
         }
     </script>
 </body>
