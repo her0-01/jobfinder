@@ -6,6 +6,8 @@ import os
 import secrets
 from datetime import datetime
 from pathlib import Path
+import json
+import hashlib
 
 # Import conditionnel selon l'environnement
 try:
@@ -13,11 +15,6 @@ try:
     USE_DATABASE = True
 except:
     USE_DATABASE = False
-
-if not USE_DATABASE:
-    # Fallback vers JSON si pas de DB
-    import json
-    import hashlib
     from pathlib import Path
 
 class UserManager:
