@@ -379,12 +379,15 @@ def calculate_relevance():
         background = user_config.get('background', {})
         
         # Créer profil candidat pour comparaison
-        candidate_profile = f"""FORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}
-SPÉCIALISATION: {background.get('specialisation', '')}
-COMPÉTENCES: {background.get('competences_cles', '')}
-PROJETS: {background.get('projets_majeurs', '')}
-MOTIVATION: {background.get('motivation', '')}
-OBJECTIFS: {background.get('objectifs', '')}"""
+        candidate_profile = "FORMATION: {} -> {}\nSPÉCIALISATION: {}\nCOMPÉTENCES: {}\nPROJETS: {}\nMOTIVATION: {}\nOBJECTIFS: {}".format(
+            background.get('formation_actuelle', ''),
+            background.get('formation_visee', ''),
+            background.get('specialisation', ''),
+            background.get('competences_cles', ''),
+            background.get('projets_majeurs', ''),
+            background.get('motivation', ''),
+            background.get('objectifs', '')
+        )
         
         # Calculer score pour chaque offre
         for job in jobs:
