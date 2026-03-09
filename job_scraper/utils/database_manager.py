@@ -209,7 +209,125 @@ class DatabaseManager:
             )
         ''')
         
+        # Table application_tracking pour suivi des candidatures
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS application_tracking (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                job_title VARCHAR(500) NOT NULL,
+                company VARCHAR(200) NOT NULL,
+                applied_date DATE NOT NULL,
+                status VARCHAR(50) DEFAULT 'sent',
+                last_update TIMESTAMP DEFAULT NOW(),
+                next_followup TIMESTAMP,
+                notes TEXT,
+                contact_email VARCHAR(200),
+                contact_name VARCHAR(200),
+                interview_date TIMESTAMP,
+                salary_proposed VARCHAR(100),
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        ''' if self.use_postgres else '''
+            CREATE TABLE IF NOT EXISTS application_tracking (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                job_title TEXT NOT NULL,
+                company TEXT NOT NULL,
+                applied_date DATE NOT NULL,
+                status TEXT DEFAULT 'sent',
+                last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                next_followup TIMESTAMP,
+                notes TEXT,
+                contact_email TEXT,
+                contact_name TEXT,
+                interview_date TIMESTAMP,
+                salary_proposed TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # Index pour application_tracking
+        if self.use_postgres:
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_tracking_user ON application_tracking(user_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_tracking_status ON application_tracking(status)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_tracking_followup ON application_tracking(next_followup)')
+        
+        # Table alerts pour alertes personnalisées
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS alerts (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                keywords TEXT NOT NULL,
+                location TEXT,
+                frequency VARCHAR(50) DEFAULT 'daily',
+                active BOOLEAN DEFAULT TRUE,
+                last_check TIMESTAMP,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        ''' if self.use_postgres else '''
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                keywords TEXT NOT NULL,
+                location TEXT,
+                frequency TEXT DEFAULT 'daily',
+                active INTEGER DEFAULT 1,
+                last_check TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # Table alert_notifications
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS alert_notifications (
+                id SERIAL PRIMARY KEY,
+                alert_id INTEGER REFERENCES alerts(id) ON DELETE CASCADE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                job_title TEXT NOT NULL,
+                job_company TEXT,
+                job_link TEXT,
+                read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        ''' if self.use_postgres else '''
+            CREATE TABLE IF NOT EXISTS alert_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alert_id INTEGER,
+                user_id INTEGER,
+                job_title TEXT NOT NULL,
+                job_company TEXT,
+                job_link TEXT,
+                read INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(alert_id) REFERENCES alerts(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # Table alert_seen_jobs
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS alert_seen_jobs (
+                id SERIAL PRIMARY KEY,
+                alert_id INTEGER REFERENCES alerts(id) ON DELETE CASCADE,
+                job_link TEXT NOT NULL,
+                seen_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(alert_id, job_link)
+            )
+        ''' if self.use_postgres else '''
+            CREATE TABLE IF NOT EXISTS alert_seen_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alert_id INTEGER,
+                job_link TEXT NOT NULL,
+                seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(alert_id, job_link),
+                FOREIGN KEY(alert_id) REFERENCES alerts(id) ON DELETE CASCADE
+            )
+        ''')
+        
         self.conn.commit()
+        print("✅ Toutes les tables créées avec succès (users, api_keys, user_configs, sessions, job_searches, job_offers, applications, application_tracking, alerts, alert_notifications, alert_seen_jobs)")
     
     def create_user(self, username, password, email=None):
         """Crée un nouvel utilisateur"""
