@@ -14,6 +14,7 @@ from ai_adapters.profile_analyzer import ProfileAnalyzer
 from ai_adapters.pdf_generator import PDFGenerator
 from utils.user_manager import UserManager
 from utils.database_manager import DatabaseManager
+from utils.logger import setup_logger
 import configparser
 from datetime import datetime
 import threading
@@ -21,6 +22,9 @@ from functools import wraps
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+
+# Logger
+logger = setup_logger('web_app')
 
 # User Manager
 user_manager = UserManager()
@@ -156,6 +160,9 @@ def scrape_jobs():
         stop_scraping = False
         scraping_status = {"running": True, "progress": "Scraping sites d'emploi...", "can_stop": True}
         
+        # Créer un Event pour le stop_flag
+        stop_event = threading.Event()
+        
         try:
             # Sauvegarder la recherche en DB IMMÉDIATEMENT
             search_id = None
@@ -169,22 +176,27 @@ def scrape_jobs():
                     search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
             
             # Scraping sites carrières
-            if not stop_scraping:
+            if not stop_event.is_set():
                 scraping_status = {"running": True, "progress": "🏢 Initialisation scraping sites carrières...", "can_stop": True}
                 adaptive = AdaptiveScraper(headless=True)
                 
                 def update_status(company, index, total, jobs_count):
-                    global scraping_status, stop_scraping
+                    global scraping_status, stop_scraping, current_jobs
                     if stop_scraping:
-                        return
+                        stop_event.set()
+                    # Mettre à jour current_jobs avec les offres du scraper
+                    current_jobs = list(adaptive.jobs)  # Copier les offres en temps réel
                     # index/total pour sites carrières (sur 15), puis on ajoutera 8 pour universels
                     scraping_status = {"running": True, "progress": f"🏢 {company} ({index}/15) • {len(current_jobs)} offres trouvées", "can_stop": True}
                 
                 adaptive.status_callback = update_status
-                adaptive.stop_flag = lambda: stop_scraping
+                adaptive.stop_flag = stop_event
                 corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
                 adaptive.close()
-                current_jobs.extend(corporate_jobs)
+                
+                # Mettre à jour current_jobs avec résultats finaux
+                current_jobs = list(corporate_jobs) if corporate_jobs else current_jobs
+                logger.info(f"💾 {len(current_jobs)} offres corporate")
                 
                 # SAUVEGARDER IMMÉDIATEMMENT après chaque batch
                 if use_database and search_id and user_id:
@@ -192,31 +204,37 @@ def scrape_jobs():
                         db_manager.save_job_offer(search_id, user_id, job)
             
             # Scraping sites universels
-            if not stop_scraping:
+            if not stop_event.is_set():
                 from scrapers.universal_scraper import UniversalJobScraper
                 scraping_status = {"running": True, "progress": "🌐 Initialisation scraper universel...", "can_stop": True}
                 universal = UniversalJobScraper(headless=True)
                 
                 def update_status_universal(site, index, total, jobs_count):
-                    global scraping_status, stop_scraping
+                    global scraping_status, stop_scraping, current_jobs
                     if stop_scraping:
-                        return
+                        stop_event.set()
+                    # Mettre à jour current_jobs avec les offres du scraper universel
+                    current_jobs = list(adaptive.jobs) + list(universal.jobs)  # Combiner corporate + universal
                     # 15 sites carrières déjà faits + index sur 8 sites universels
                     total_progress = 15 + index
                     scraping_status = {"running": True, "progress": f"🌐 {site} ({total_progress}/23) • {len(current_jobs)} offres trouvées", "can_stop": True}
                 
                 universal.status_callback = update_status_universal
+                universal.stop_flag = stop_event
                 universal_jobs = universal.scrape_all(keywords, location, contract_type)
                 universal.close()
-                current_jobs.extend(universal_jobs)
-                scraping_status = {"running": True, "progress": f"✅ Sites universels: {len(universal_jobs)} offres", "can_stop": True}
+                
+                # Combiner corporate + universal
+                if universal_jobs:
+                    current_jobs.extend(universal_jobs)
+                    logger.info(f"💾 {len(universal_jobs)} offres universal ajoutées")
                 
                 # SAUVEGARDER IMMÉDIATEMMENT après sites universels
                 if use_database and search_id and user_id:
                     for job in universal_jobs:
                         db_manager.save_job_offer(search_id, user_id, job)
             
-            # Dédupliquer
+            # Dédupliquer TOUJOURS (même si arrêté)
             seen = set()
             unique_jobs = []
             for job in current_jobs:
@@ -226,11 +244,14 @@ def scrape_jobs():
                     unique_jobs.append(job)
             
             current_jobs = unique_jobs
+            logger.info(f"✅ {len(current_jobs)} offres uniques après dédoublonnage")
             
+            # Sauvegarder TOUJOURS dans fichier JSON (même si arrêté)
             with open('data/jobs_latest.json', 'w', encoding='utf-8') as f:
                 json.dump(current_jobs, f, ensure_ascii=False, indent=2)
+            logger.info(f"💾 Fichier JSON sauvegardé: {len(current_jobs)} offres")
             
-            status_msg = f"⏹️ Arrêté - {len(current_jobs)} offres" if stop_scraping else f"✓ {len(current_jobs)} offres trouvées"
+            status_msg = f"⏹️ Arrêté - {len(current_jobs)} offres" if stop_event.is_set() else f"✓ {len(current_jobs)} offres trouvées"
             scraping_status = {"running": False, "progress": status_msg, "can_stop": False}
         except Exception as e:
             scraping_status = {"running": False, "progress": f"❌ Erreur: {str(e)}", "can_stop": False}

@@ -19,6 +19,7 @@ class UniversalJobScraper:
         self.logger = setup_logger('universal_scraper')
         self.logger.info("🚀 Initialisation UniversalJobScraper")
         self.status_callback = None  # Callback pour progression
+        self.stop_flag = None  # Flag pour arrêt
         
         # Smart Query Builder
         try:
@@ -94,6 +95,11 @@ class UniversalJobScraper:
         ]
         
         for i, (site_name, scrape_func) in enumerate(sites, 1):
+            # Vérifier stop_flag avant chaque site
+            if self.stop_flag and self.stop_flag.is_set():
+                self.logger.info(f"⏹️ Arrêt demandé - Skip sites restants")
+                break
+            
             if self.status_callback:
                 self.status_callback(site_name, i, len(sites), len(self.jobs))
             print(f"\n[{i}/{len(sites)}] 🌐 {site_name}...")

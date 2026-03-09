@@ -89,6 +89,11 @@ class AdaptiveScraper:
         self.logger.info(f"\n{'='*60}")
         self.logger.info(f"🏢 Scraping {company_name}")
         
+        # Vérifier stop_flag au début
+        if self.stop_flag and self.stop_flag.is_set():
+            self.logger.info(f"⏹️ Arrêt demandé - Skip {company_name}")
+            return
+        
         try:
             # TOUJOURS utiliser Smart Query Builder si disponible
             if self.smart_query:
@@ -140,10 +145,20 @@ class AdaptiveScraper:
                 self.logger.info("⚠️ Smart Query Builder désactivé - URL directe")
                 print(f"  ⚠️ Pas d'IA - URL directe pour {company_name}")
             
+            # Vérifier stop_flag avant chargement
+            if self.stop_flag and self.stop_flag.is_set():
+                self.logger.info(f"⏹️ Arrêt demandé avant chargement {company_name}")
+                return
+            
             self.logger.debug("Chargement de la page...")
             self.driver.get(url)
             time.sleep(5)
             self.logger.info("✓ Page chargée")
+            
+            # Vérifier stop_flag après chargement
+            if self.stop_flag and self.stop_flag.is_set():
+                self.logger.info(f"⏹️ Arrêt demandé après chargement {company_name}")
+                return
             
             # Accepter cookies
             self.logger.debug("Recherche bannière cookies...")
@@ -158,6 +173,11 @@ class AdaptiveScraper:
                     except: continue
             except: 
                 self.logger.debug("Pas de bannière cookies")
+            
+            # Vérifier stop_flag avant scroll
+            if self.stop_flag and self.stop_flag.is_set():
+                self.logger.info(f"⏹️ Arrêt demandé avant parsing {company_name}")
+                return
             
             # Scroll pour charger contenu dynamique
             self.logger.debug("Scroll pour contenu dynamique...")
@@ -284,7 +304,7 @@ class AdaptiveScraper:
         
         for i, (company, url) in enumerate(companies.items(), 1):
             # Vérifier si arrêt demandé
-            if self.stop_flag and self.stop_flag():
+            if self.stop_flag and self.stop_flag.is_set():
                 self.logger.info("⏹️ Arrêt demandé par l'utilisateur")
                 break
             
@@ -301,7 +321,7 @@ class AdaptiveScraper:
         self.logger.info(f"✅ SCRAPING TERMINÉ: {len(self.jobs)} offres totales")
         self.logger.info(f"{'='*60}\n")
         
-        stopped = self.stop_flag and self.stop_flag()
+        stopped = self.stop_flag and self.stop_flag.is_set()
         builtins.scraping_status = {"running": False, "progress": f"⏹️ Arrêté - {len(self.jobs)} offres" if stopped else f"✅ {len(self.jobs)} offres trouvées"}
         return self.jobs
     
