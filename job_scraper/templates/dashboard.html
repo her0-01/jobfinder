@@ -344,8 +344,16 @@
             const response = await fetch(`/api/search/${searchId}/jobs`);
             currentJobs = await response.json();
             
-            showTab('search');
-            document.querySelector('.tab').click();
+            // Changer vers l'onglet recherche
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            
+            document.getElementById('search-tab').style.display = 'block';
+            document.getElementById('history-tab').style.display = 'none';
+            document.getElementById('applications-tab').style.display = 'none';
+            
+            // Calculer scores et afficher
+            await calculateRelevanceScores();
             displayJobs();
         }
 
