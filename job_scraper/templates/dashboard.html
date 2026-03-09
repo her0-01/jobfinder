@@ -97,7 +97,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h1>🤖 Job Application Bot</h1>
-                    <p>Scraping automatique + Génération IA de candidatures</p>
+                    <p>Recherche d'emploi automatisée pour TOUS les métiers - Du boulanger au data scientist</p>
                 </div>
                 <a href="/config" class="btn btn-primary" style="text-decoration: none;">⚙️ Configuration</a>
             </div>
@@ -117,7 +117,7 @@
                 
                 <div class="form-group">
                     <label>Poste recherché</label>
-                    <input type="text" id="keywords" value="Data Engineer Alternance" placeholder="Ex: Data Scientist, ML Engineer...">
+                    <input type="text" id="keywords" value="Data Engineer Alternance" placeholder="Ex: Boulanger, Infirmier, Développeur...">
                 </div>
 
                 <div class="form-group">
@@ -141,11 +141,44 @@
                 
                 <div class="search-suggestions" id="suggestions">
                     <strong>💡 Suggestions populaires:</strong><br>
-                    <span class="suggestion-chip" onclick="applySuggestion('Data Scientist')">Data Scientist</span>
-                    <span class="suggestion-chip" onclick="applySuggestion('DevOps Engineer')">DevOps Engineer</span>
-                    <span class="suggestion-chip" onclick="applySuggestion('Full Stack Developer')">Full Stack Developer</span>
-                    <span class="suggestion-chip" onclick="applySuggestion('Product Manager')">Product Manager</span>
-                    <span class="suggestion-chip" onclick="applySuggestion('UX Designer')">UX Designer</span>
+                    <div style="margin: 10px 0;">
+                        <strong>🎓 Étudiants/Alternance:</strong><br>
+                        <span class="suggestion-chip" onclick="applySuggestion('Data Scientist Alternance')">Data Scientist</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Développeur Web Alternance')">Développeur Web</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Marketing Digital Alternance')">Marketing Digital</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <strong>🍞 Métiers Manuels:</strong><br>
+                        <span class="suggestion-chip" onclick="applySuggestion('Boulanger')">Boulanger</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Pâtissier')">Pâtissier</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Cuisinier')">Cuisinier</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Électricien')">Électricien</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Plombier')">Plombier</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <strong>💼 Commerce/Vente:</strong><br>
+                        <span class="suggestion-chip" onclick="applySuggestion('Vendeur')">Vendeur</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Commercial')">Commercial</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Caissier')">Caissier</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <strong>🏥 Santé/Social:</strong><br>
+                        <span class="suggestion-chip" onclick="applySuggestion('Infirmier')">Infirmier</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Aide-soignant')">Aide-soignant</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Auxiliaire de vie')">Auxiliaire de vie</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <strong>🚚 Logistique/Transport:</strong><br>
+                        <span class="suggestion-chip" onclick="applySuggestion('Chauffeur Livreur')">Chauffeur Livreur</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Magasinier')">Magasinier</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Préparateur de commandes')">Préparateur</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <strong>💻 Tech/IT:</strong><br>
+                        <span class="suggestion-chip" onclick="applySuggestion('Développeur Full Stack')">Full Stack</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('DevOps Engineer')">DevOps</span>
+                        <span class="suggestion-chip" onclick="applySuggestion('Product Manager')">Product Manager</span>
+                    </div>
                 </div>
                 
                 <div id="status" class="status" style="display:none;">
