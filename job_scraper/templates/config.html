@@ -184,6 +184,15 @@
                 document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
                 currentProvider = this.dataset.provider;
+                
+                // Charger la clé du nouveau provider
+                fetch('/api/config')
+                    .then(res => res.json())
+                    .then(config => {
+                        const apiKeys = config.api_keys || {};
+                        document.getElementById('apiKey').value = apiKeys[currentProvider] || '';
+                    });
+                
                 updateApiKeyHelp();
             });
         });
@@ -205,7 +214,10 @@
                 // Provider
                 currentProvider = config.ai_provider || 'groq';
                 document.querySelector(`[data-provider="${currentProvider}"]`).classList.add('active');
-                document.getElementById('apiKey').value = config.api_key || '';
+                
+                // Charger la clé API du provider actuel
+                const apiKeys = config.api_keys || {};
+                document.getElementById('apiKey').value = apiKeys[currentProvider] || '';
                 updateApiKeyHelp();
                 
                 // Profil
@@ -235,9 +247,12 @@
         }
 
         async function saveConfig() {
+            const apiKeys = {};
+            apiKeys[currentProvider] = document.getElementById('apiKey').value;
+            
             const config = {
                 ai_provider: currentProvider,
-                api_key: document.getElementById('apiKey').value,
+                api_keys: apiKeys,
                 profile: {
                     name: document.getElementById('fullName').value,
                     email: document.getElementById('email').value,
