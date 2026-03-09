@@ -21,6 +21,20 @@
         .btn-success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; }
         .btn-success:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4); }
         .status { padding: 20px; background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%); border-left: 4px solid #38b2ac; border-radius: 10px; margin: 20px 0; }
+        .progress-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .progress-header h4 { margin: 0; color: #2d3748; font-size: 1.3em; }
+        .progress-header span { font-size: 1.1em; font-weight: 600; color: #667eea; }
+        .progress-bar-container { width: 100%; height: 30px; background: #e2e8f0; border-radius: 15px; overflow: hidden; margin-bottom: 20px; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+        .status-details { background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px; max-height: 200px; overflow-y: auto; }
+        .status-line { padding: 8px 0; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; }
+        .status-line:last-child { border-bottom: none; }
+        .status-icon { font-size: 1.2em; }
+        .status-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-card .number { font-size: 2em; font-weight: 700; }
+        .stat-card .label { font-size: 0.9em; opacity: 0.9; }
         .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 25px; margin-top: 30px; }
         .job-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); transition: all 0.3s; position: relative; border: 2px solid transparent; }
         .job-card:hover { transform: translateY(-5px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); border-color: #667eea; }
@@ -107,7 +121,19 @@
 
                 <button class="btn btn-primary" onclick="startScraping()">🚀 Lancer la Recherche</button>
                 
-                <div id="status" class="status" style="display:none;"></div>
+                <div id="status" class="status" style="display:none;">
+                    <div class="progress-container">
+                        <div class="progress-header">
+                            <h4 id="status-title">🔍 Scraping en cours...</h4>
+                            <span id="status-timer">0s</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="progress-bar"></div>
+                        </div>
+                        <div id="status-details" class="status-details"></div>
+                        <div id="status-stats" class="status-stats"></div>
+                    </div>
+                </div>
             </div>
 
             <div id="jobs-container">
@@ -185,7 +211,17 @@
 
             const status = document.getElementById('status');
             status.style.display = 'block';
-            status.innerHTML = '<div class="loading"><div class="spinner"></div><p>Scraping en cours...</p></div>';
+            
+            // Réinitialiser l'UI
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('status-details').innerHTML = '';
+            document.getElementById('status-stats').innerHTML = '';
+            
+            let startTime = Date.now();
+            let timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('status-timer').textContent = elapsed + 's';
+            }, 1000);
 
             await fetch('/api/scrape', {
                 method: 'POST',
@@ -193,18 +229,55 @@
                 body: JSON.stringify({keywords, location, contract_type})
             });
 
-            checkStatus();
+            checkStatus(timerInterval);
         }
 
-        async function checkStatus() {
+        async function checkStatus(timerInterval) {
             const response = await fetch('/api/status');
             const status = await response.json();
             
-            document.getElementById('status').innerHTML = `<p>${status.progress}</p>`;
+            // Mettre à jour le titre
+            document.getElementById('status-title').textContent = status.running ? '🔍 Scraping en cours...' : '✅ Scraping terminé';
+            
+            // Parser le message de progression
+            const progress = status.progress || '';
+            
+            // Extraire les informations
+            if (progress.includes('Scraping')) {
+                const detailsDiv = document.getElementById('status-details');
+                const line = document.createElement('div');
+                line.className = 'status-line';
+                line.innerHTML = `<span class="status-icon">🔄</span><span>${progress}</span>`;
+                detailsDiv.appendChild(line);
+                detailsDiv.scrollTop = detailsDiv.scrollHeight;
+            }
+            
+            // Extraire le nombre d'offres
+            const match = progress.match(/(\d+)\s+offres/);
+            if (match) {
+                const count = parseInt(match[1]);
+                const progressPercent = Math.min(100, (count / 50) * 100);
+                document.getElementById('progress-bar').style.width = progressPercent + '%';
+                document.getElementById('progress-bar').textContent = count + ' offres';
+                
+                // Afficher les stats
+                document.getElementById('status-stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="number">${count}</div>
+                        <div class="label">Offres trouvées</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${Math.floor(count / 15)}</div>
+                        <div class="label">Sites scrapés</div>
+                    </div>
+                `;
+            }
 
             if (status.running) {
-                setTimeout(checkStatus, 2000);
+                setTimeout(() => checkStatus(timerInterval), 2000);
             } else {
+                clearInterval(timerInterval);
+                document.getElementById('progress-bar').style.width = '100%';
                 loadJobs();
             }
         }
