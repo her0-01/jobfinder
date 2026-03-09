@@ -82,7 +82,13 @@
         .stat-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; }
         .stat-box .icon { font-size: 2.5em; margin-bottom: 10px; }
         .stat-box .value { font-size: 2.2em; font-weight: 700; color: #667eea; }
-        .stat-box .label { color: #718096; font-size: 0.9em; margin-top: 5px; }
+        .export-btn { background: linear-gradient(135deg, #38b2ac 0%, #319795 100%); color: white; }
+        .notification { position: fixed; top: 20px; right: 20px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; display: none; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(400px); } to { transform: translateX(0); } }
+        .quick-actions { display: flex; gap: 10px; margin: 20px 0; }
+        .search-suggestions { background: white; border: 2px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-top: 10px; display: none; }
+        .suggestion-chip { display: inline-block; padding: 8px 16px; background: #edf2f7; border-radius: 20px; margin: 5px; cursor: pointer; transition: all 0.3s; }
+        .suggestion-chip:hover { background: #667eea; color: white; transform: scale(1.05); }
     </style>
 </head>
 <body>
@@ -131,6 +137,16 @@
 
                 <button class="btn btn-primary" onclick="startScraping()" id="start-btn">🚀 Lancer la Recherche</button>
                 <button class="btn" onclick="stopScraping()" id="stop-btn" style="display:none; background: linear-gradient(135deg, #f56565 0%, #c53030 100%); color: white;">⏹️ Arrêter</button>
+                <button class="btn export-btn" onclick="exportJobs()" style="margin-left: 10px;">📥 Exporter CSV</button>
+                
+                <div class="search-suggestions" id="suggestions">
+                    <strong>💡 Suggestions populaires:</strong><br>
+                    <span class="suggestion-chip" onclick="applySuggestion('Data Scientist')">Data Scientist</span>
+                    <span class="suggestion-chip" onclick="applySuggestion('DevOps Engineer')">DevOps Engineer</span>
+                    <span class="suggestion-chip" onclick="applySuggestion('Full Stack Developer')">Full Stack Developer</span>
+                    <span class="suggestion-chip" onclick="applySuggestion('Product Manager')">Product Manager</span>
+                    <span class="suggestion-chip" onclick="applySuggestion('UX Designer')">UX Designer</span>
+                </div>
                 
                 <div id="status" class="status" style="display:none;">
                     <div class="progress-container">
@@ -161,6 +177,8 @@
                         <option value="high">Haute pertinence uniquement</option>
                         <option value="medium">Moyenne et haute</option>
                     </select>
+                    <button class="btn btn-sm" onclick="toggleSuggestions()" style="margin-left: auto;">💡 Suggestions</button>
+                    <button class="btn btn-sm export-btn" onclick="exportJobs()">📥 Export</button>
                 </div>
             </div>
         </div>
@@ -214,6 +232,10 @@
                 <div id="applications-list"></div>
             </div>
         </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <span id="notification-text"></span>
     </div>
 
     <div id="modal" class="modal">
@@ -728,6 +750,51 @@
             document.getElementById('stat-offers').textContent = currentJobs.length;
             document.getElementById('stat-favorites').textContent = favorites.length;
             document.getElementById('stat-applications').textContent = apps.length;
+        }
+
+        function showNotification(message) {
+            const notif = document.getElementById('notification');
+            document.getElementById('notification-text').textContent = message;
+            notif.style.display = 'block';
+            setTimeout(() => notif.style.display = 'none', 3000);
+        }
+
+        function toggleSuggestions() {
+            const sugg = document.getElementById('suggestions');
+            sugg.style.display = sugg.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function applySuggestion(keyword) {
+            document.getElementById('keywords').value = keyword;
+            document.getElementById('suggestions').style.display = 'none';
+            showNotification(`🔍 Recherche mise à jour: ${keyword}`);
+        }
+
+        function exportJobs() {
+            if (!currentJobs || currentJobs.length === 0) {
+                alert('Aucune offre à exporter');
+                return;
+            }
+
+            const csv = [
+                ['Titre', 'Entreprise', 'Localisation', 'Source', 'Score', 'Lien'].join(','),
+                ...currentJobs.map(job => [
+                    `"${job.title}"`,
+                    `"${job.company}"`,
+                    `"${job.location}"`,
+                    `"${job.source}"`,
+                    job.relevance_score || 50,
+                    `"${job.link}"`
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `offres_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            
+            showNotification(`✅ ${currentJobs.length} offres exportées`);
         }
     </script>
 </body>
