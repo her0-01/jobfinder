@@ -624,6 +624,8 @@
                                 ${job.is_favorite ? '❤️' : '♡'}
                             </button>
                             <button class="btn btn-success btn-sm" onclick="generateApplication(${index})">✨ Générer</button>
+                            <button class="btn btn-sm" onclick="analyzeJob(${index})" style="background: #38b2ac; color: white;">🔍 Analyser</button>
+                            <button class="btn btn-sm" onclick="prepareInterview(${index})" style="background: #ed8936; color: white;">🎤 Entretien</button>
                             <button class="btn btn-sm" onclick="copyJobInfo(${index})" style="background: #805ad5; color: white;">📋 Copier</button>
                             <a href="${job.link}" target="_blank" class="btn btn-primary btn-sm">🔗 Voir</a>
                         </div>
@@ -953,18 +955,81 @@
             });
         }
 
-        function loadTracking() {
-            showNotification('📈 Suivi des candidatures chargé');
+        async function loadTracking() {
+            const apps = await fetch('/api/tracking/applications').then(r => r.json());
+            const followups = await fetch('/api/tracking/followups').then(r => r.json());
+            const pipeline = await fetch('/api/tracking/pipeline').then(r => r.json());
+            
+            const timeline = document.getElementById('tracking-timeline');
+            
+            const statusMap = {
+                'sent': '📤 Envoyé',
+                'viewed': '👀 Vu par recruteur',
+                'interview_scheduled': '📞 Entretien prévu',
+                'interview_done': '✅ Entretien passé',
+                'offer': '🎉 Offre reçue',
+                'rejected': '❌ Refusé'
+            };
+            
+            let html = '';
+            
+            // Grouper par statut
+            const grouped = {};
+            apps.forEach(app => {
+                if (!grouped[app.status]) grouped[app.status] = [];
+                grouped[app.status].push(app);
+            });
+            
+            Object.keys(grouped).forEach(status => {
+                html += `
+                <div class="timeline-item">
+                    <strong>${statusMap[status] || status}</strong> - ${grouped[status].length} candidature(s)<br>
+                    <small>${grouped[status].map(a => `${a.job_title} chez ${a.company}`).join(', ')}</small>
+                </div>
+                `;
+            });
+            
+            timeline.innerHTML = html || '<p>Aucune candidature suivie</p>';
+            
+            // Afficher relances nécessaires
+            if (followups.length > 0) {
+                timeline.innerHTML += `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin-top: 20px;">
+                    <strong>⚠️ ${followups.length} relance(s) à faire:</strong><br>
+                    ${followups.map(f => `
+                        <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px;">
+                            <strong>${f.job_title} - ${f.company}</strong><br>
+                            <small>Relance prévue: ${new Date(f.next_followup).toLocaleDateString('fr-FR')}</small><br>
+                            <button class="btn btn-sm" onclick="showFollowupMessage(${f.id}, '${f.message.replace(/'/g, "\\'").replace(/\n/g, ' ')}')">📧 Voir message</button>
+                        </div>
+                    `).join('')}
+                </div>
+                `;
+            }
         }
 
-        function addTracking() {
+        async function addTracking() {
             const company = prompt('Entreprise:');
             const position = prompt('Poste:');
-            const status = prompt('Statut (envoyé/vu/entretien):');
             
-            if (company && position && status) {
-                showNotification(`✅ Candidature ajoutée: ${position} chez ${company}`);
-            }
+            if (!company || !position) return;
+            
+            await fetch('/api/tracking/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    company: company,
+                    job_title: position,
+                    status: 'sent'
+                })
+            });
+            
+            showNotification(`✅ Candidature ajoutée: ${position} chez ${company}`);
+            loadTracking();
+        }
+        
+        function showFollowupMessage(appId, message) {
+            alert('Message de relance:\n\n' + message);
         }
 
         function loadAlerts() {
@@ -987,6 +1052,152 @@
         function deleteAlert(index) {
             if (confirm('Supprimer cette alerte ?')) {
                 showNotification('🗑️ Alerte supprimée');
+            }
+        }
+        
+        async function analyzeJob(index) {
+            const job = currentJobs[index];
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><p>Analyse en cours...</p></div>';
+            
+            try {
+                // Skill gap analysis
+                const skillGap = await fetch('/api/matcher/skill-gap', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        cv: 'Mon CV',
+                        job_description: job.title + ' ' + job.company
+                    })
+                }).then(r => r.json());
+                
+                // Red flags
+                const redFlags = await fetch('/api/matcher/red-flags', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        job_description: job.title,
+                        company: job.company
+                    })
+                }).then(r => r.json());
+                
+                // Salary estimate
+                const salary = await fetch('/api/matcher/salary-estimate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        job_title: job.title,
+                        location: job.location,
+                        experience_years: 2
+                    })
+                }).then(r => r.json());
+                
+                modalBody.innerHTML = `
+                    <h2>🔍 Analyse Complète - ${job.title}</h2>
+                    <h3>${job.company}</h3>
+                    
+                    <div class="ai-insight" style="margin: 20px 0;">
+                        <h3>📊 Analyse des Compétences</h3>
+                        <pre style="white-space: pre-wrap;">${skillGap.analysis}</pre>
+                    </div>
+                    
+                    <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ffc107;">
+                        <h3>🚩 Red Flags & Points de Vigilance</h3>
+                        <pre style="white-space: pre-wrap;">${redFlags.analysis}</pre>
+                    </div>
+                    
+                    <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); border-left: 4px solid #28a745;">
+                        <h3>💰 Estimation Salariale</h3>
+                        <pre style="white-space: pre-wrap;">${salary.salary_info}</pre>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="closeModal()">Fermer</button>
+                `;
+            } catch (error) {
+                modalBody.innerHTML = `<p>❌ Erreur: ${error.message}</p><p>Vérifiez que votre clé API est configurée.</p>`;
+            }
+        }
+        
+        async function prepareInterview(index) {
+            const job = currentJobs[index];
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            modal.style.display = 'block';
+            modalBody.innerHTML = '<div class="loading"><div class="spinner"></div><p>Préparation de l\'entretien...</p></div>';
+            
+            try {
+                // Questions probables
+                const questions = await fetch('/api/interview/questions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        job_title: job.title,
+                        company: job.company,
+                        job_description: ''
+                    })
+                }).then(r => r.json());
+                
+                // Analyse entreprise
+                const companyAnalysis = await fetch('/api/interview/company-analysis', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({company: job.company})
+                }).then(r => r.json());
+                
+                // Questions à poser
+                const questionsToAsk = await fetch('/api/interview/questions-to-ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        job_title: job.title,
+                        company: job.company
+                    })
+                }).then(r => r.json());
+                
+                // Elevator pitch
+                const pitch = await fetch('/api/interview/elevator-pitch', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_profile: 'Candidat motivé',
+                        job_title: job.title
+                    })
+                }).then(r => r.json());
+                
+                modalBody.innerHTML = `
+                    <h2>🎤 Préparation Entretien - ${job.title}</h2>
+                    <h3>${job.company}</h3>
+                    
+                    <div class="ai-insight" style="margin: 20px 0;">
+                        <h3>🏢 Analyse de l'Entreprise</h3>
+                        <pre style="white-space: pre-wrap;">${companyAnalysis.analysis}</pre>
+                    </div>
+                    
+                    <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);">
+                        <h3>❓ Questions Probables (Préparez vos réponses)</h3>
+                        <ol style="margin-left: 20px;">
+                            ${questions.questions.filter(q => q.trim()).map(q => `<li style="margin: 10px 0;">${q}</li>`).join('')}
+                        </ol>
+                    </div>
+                    
+                    <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ffc107;">
+                        <h3>💡 Questions à Poser au Recruteur</h3>
+                        <ol style="margin-left: 20px;">
+                            ${questionsToAsk.questions.filter(q => q.trim()).map(q => `<li style="margin: 10px 0;">${q}</li>`).join('')}
+                        </ol>
+                    </div>
+                    
+                    <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%); border-left: 4px solid #e91e63;">
+                        <h3>🎯 Votre Elevator Pitch (30 secondes)</h3>
+                        <pre style="white-space: pre-wrap; font-size: 1.1em;">${pitch.pitch}</pre>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="closeModal()">Fermer</button>
+                `;
+            } catch (error) {
+                modalBody.innerHTML = `<p>❌ Erreur: ${error.message}</p><p>Vérifiez que votre clé API est configurée.</p>`;
             }
         }
     </script>

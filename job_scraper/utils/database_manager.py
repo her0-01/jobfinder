@@ -557,6 +557,26 @@ class DatabaseManager:
         query = "SELECT * FROM users WHERE id = %s"
         result = self.execute_query(query, (user_id,), fetch=True)
         return result[0] if result else None
+    
+    def execute_query(self, query, params=None, fetch=False):
+        """Exécuter une requête SQL générique"""
+        cursor = self.conn.cursor(cursor_factory=RealDictCursor) if self.use_postgres else self.conn.cursor()
+        
+        try:
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            
+            if fetch:
+                return cursor.fetchall()
+            else:
+                self.conn.commit()
+                return cursor
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Database error: {e}")
+            raise
 
     def close(self):
         """Ferme la connexion à la base de données"""

@@ -21,6 +21,9 @@ import threading
 from functools import wraps
 
 from alert_scheduler import alert_system
+from application_tracker import ApplicationTracker
+from interview_prep import InterviewPrep
+from smart_matcher import SmartMatcher
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -735,3 +738,297 @@ def _get_top_sources(offers):
     from collections import Counter
     sources = [o.get('source_site') for o in offers if o.get('source_site')]
     return [{'name': s, 'count': count} for s, count in Counter(sources).most_common(5)]
+
+# Routes pour Application Tracking
+@app.route('/api/tracking/applications', methods=['GET'])
+@require_auth
+def get_tracking_applications():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    user_id = user_config.get('user_id', 1)
+    
+    tracker = ApplicationTracker()
+    
+    # Récupérer toutes les candidatures
+    query = "SELECT * FROM application_tracking WHERE user_id = %s ORDER BY applied_date DESC"
+    apps = tracker.db.execute_query(query, (user_id,), fetch=True)
+    
+    return jsonify([{
+        'id': a[0],
+        'job_title': a[2],
+        'company': a[3],
+        'applied_date': str(a[4]),
+        'status': a[5],
+        'last_update': str(a[6]),
+        'next_followup': str(a[7]) if a[7] else None,
+        'notes': a[8]
+    } for a in apps])
+
+@app.route('/api/tracking/add', methods=['POST'])
+@require_auth
+def add_tracking():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    user_id = user_config.get('user_id', 1)
+    
+    data = request.json
+    tracker = ApplicationTracker()
+    
+    from datetime import datetime
+    app_id = tracker.add_application(
+        user_id,
+        data['job_title'],
+        data['company'],
+        datetime.now(),
+        data.get('status', 'sent')
+    )
+    
+    return jsonify({'success': True, 'id': app_id})
+
+@app.route('/api/tracking/update/<int:app_id>', methods=['POST'])
+@require_auth
+def update_tracking(app_id):
+    data = request.json
+    tracker = ApplicationTracker()
+    tracker.update_status(app_id, data['status'], data.get('notes', ''))
+    return jsonify({'success': True})
+
+@app.route('/api/tracking/followups', methods=['GET'])
+@require_auth
+def get_followups():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    user_id = user_config.get('user_id', 1)
+    
+    tracker = ApplicationTracker()
+    followups = tracker.get_followups_needed(user_id)
+    
+    return jsonify([{
+        'id': f[0],
+        'job_title': f[2],
+        'company': f[3],
+        'applied_date': str(f[4]),
+        'next_followup': str(f[7]),
+        'message': tracker.generate_followup_message({
+            'job_title': f[2],
+            'applied_date': f[4],
+            'status': f[5]
+        })
+    } for f in followups])
+
+@app.route('/api/tracking/pipeline', methods=['GET'])
+@require_auth
+def get_pipeline():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    user_id = user_config.get('user_id', 1)
+    
+    tracker = ApplicationTracker()
+    pipeline = tracker.get_user_pipeline(user_id)
+    success_rate = tracker.get_success_rate(user_id)
+    
+    return jsonify({
+        'pipeline': [{'status': p[0], 'count': p[1], 'avg_days': float(p[2]) if p[2] else 0} for p in pipeline],
+        'success_rate': success_rate
+    })
+
+# Routes pour Interview Prep
+@app.route('/api/interview/questions', methods=['POST'])
+@require_auth
+def get_interview_questions():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    prep = InterviewPrep(api_key)
+    questions = prep.generate_interview_questions(
+        data['job_title'],
+        data['company'],
+        data.get('job_description', '')
+    )
+    
+    return jsonify({'questions': questions})
+
+@app.route('/api/interview/answer-tips', methods=['POST'])
+@require_auth
+def get_answer_tips():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    prep = InterviewPrep(api_key)
+    tips = prep.generate_answer_tips(
+        data['question'],
+        data.get('user_profile', ''),
+        data.get('job_description', '')
+    )
+    
+    return jsonify({'tips': tips})
+
+@app.route('/api/interview/company-analysis', methods=['POST'])
+@require_auth
+def analyze_company():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    prep = InterviewPrep(api_key)
+    analysis = prep.analyze_company(data['company'])
+    
+    return jsonify({'analysis': analysis})
+
+@app.route('/api/interview/questions-to-ask', methods=['POST'])
+@require_auth
+def get_questions_to_ask():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    prep = InterviewPrep(api_key)
+    questions = prep.generate_questions_to_ask(data['job_title'], data['company'])
+    
+    return jsonify({'questions': questions})
+
+@app.route('/api/interview/elevator-pitch', methods=['POST'])
+@require_auth
+def get_elevator_pitch():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    prep = InterviewPrep(api_key)
+    pitch = prep.generate_elevator_pitch(data.get('user_profile', ''), data['job_title'])
+    
+    return jsonify({'pitch': pitch})
+
+# Routes pour Smart Matcher
+@app.route('/api/matcher/skill-gap', methods=['POST'])
+@require_auth
+def analyze_skill_gap():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    matcher = SmartMatcher(api_key)
+    analysis = matcher.analyze_skill_gap(data['cv'], data['job_description'])
+    
+    return jsonify({'analysis': analysis})
+
+@app.route('/api/matcher/learning-path', methods=['POST'])
+@require_auth
+def get_learning_path():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    matcher = SmartMatcher(api_key)
+    plan = matcher.suggest_learning_path(data['missing_skills'], data['job_title'])
+    
+    return jsonify({'plan': plan})
+
+@app.route('/api/matcher/alternative-jobs', methods=['POST'])
+@require_auth
+def get_alternative_jobs():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    matcher = SmartMatcher(api_key)
+    alternatives = matcher.find_alternative_jobs(data['cv'], data['target_job'])
+    
+    return jsonify({'alternatives': alternatives})
+
+@app.route('/api/matcher/optimize-cv', methods=['POST'])
+@require_auth
+def optimize_cv():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    matcher = SmartMatcher(api_key)
+    optimization = matcher.optimize_cv_for_job(data['cv'], data['job_description'])
+    
+    return jsonify({'optimization': optimization})
+
+@app.route('/api/matcher/salary-estimate', methods=['POST'])
+@require_auth
+def estimate_salary():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    matcher = SmartMatcher(api_key)
+    salary_info = matcher.calculate_realistic_salary(
+        data['job_title'],
+        data['location'],
+        data.get('experience_years', 0)
+    )
+    
+    return jsonify({'salary_info': salary_info})
+
+@app.route('/api/matcher/red-flags', methods=['POST'])
+@require_auth
+def detect_red_flags():
+    username = request.username
+    user_config = user_manager.get_user_config(username)
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini')
+    
+    if not api_key:
+        return jsonify({'error': 'Clé API manquante'}), 400
+    
+    data = request.json
+    matcher = SmartMatcher(api_key)
+    analysis = matcher.detect_red_flags(data['job_description'], data['company'])
+    
+    return jsonify({'analysis': analysis})
