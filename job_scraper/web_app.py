@@ -168,12 +168,11 @@ def scrape_jobs():
             search_id = None
             user_id = None
             if use_database:
-                from utils.user_manager import UserManager
-                um = UserManager()
-                result = um.login(username, '')
-                if result.get('user_id'):
-                    user_id = result['user_id']
+                user_config = user_manager.get_user_config(username)
+                if user_config and 'user_id' in user_config:
+                    user_id = user_config['user_id']
                     search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
+                    logger.info(f"💾 Recherche sauvegardée: search_id={search_id}, user_id={user_id}")
             
             # Scraping sites carrières
             if not stop_event.is_set():
@@ -280,14 +279,12 @@ def get_searches():
     if not use_database:
         return jsonify([])
     
-    # Récupérer user_id
-    from utils.user_manager import UserManager
-    um = UserManager()
-    result = um.login(username, '')
-    if not result.get('user_id'):
+    # Récupérer user_id depuis la DB
+    user_config = user_manager.get_user_config(username)
+    if not user_config or 'user_id' not in user_config:
         return jsonify([])
     
-    user_id = result['user_id']
+    user_id = user_config['user_id']
     searches = db_manager.get_user_searches(user_id)
     return jsonify(searches)
 
