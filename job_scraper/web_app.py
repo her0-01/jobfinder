@@ -157,7 +157,7 @@ def scrape_jobs():
         scraping_status = {"running": True, "progress": "Scraping sites d'emploi...", "can_stop": True}
         
         try:
-            # Sauvegarder la recherche en DB
+            # Sauvegarder la recherche en DB IMMÉDIATEMENT
             search_id = None
             user_id = None
             if use_database:
@@ -184,6 +184,11 @@ def scrape_jobs():
                 corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
                 adaptive.close()
                 current_jobs.extend(corporate_jobs)
+                
+                # SAUVEGARDER IMMÉDIATEMMENT après chaque batch
+                if use_database and search_id and user_id:
+                    for job in corporate_jobs:
+                        db_manager.save_job_offer(search_id, user_id, job)
             
             # Scraping sites universels
             if not stop_scraping:
@@ -194,8 +199,13 @@ def scrape_jobs():
                 universal.close()
                 current_jobs.extend(universal_jobs)
                 scraping_status = {"running": True, "progress": f"✅ Sites universels: {len(universal_jobs)} offres", "can_stop": True}
+                
+                # SAUVEGARDER IMMÉDIATEMMENT après sites universels
+                if use_database and search_id and user_id:
+                    for job in universal_jobs:
+                        db_manager.save_job_offer(search_id, user_id, job)
             
-            # Dédupliquer et sauvegarder
+            # Dédupliquer
             seen = set()
             unique_jobs = []
             for job in current_jobs:
@@ -203,8 +213,6 @@ def scrape_jobs():
                 if key not in seen:
                     seen.add(key)
                     unique_jobs.append(job)
-                    if use_database and search_id and user_id:
-                        db_manager.save_job_offer(search_id, user_id, job)
             
             current_jobs = unique_jobs
             
