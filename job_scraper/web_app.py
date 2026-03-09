@@ -178,7 +178,15 @@ def scrape_jobs():
             corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
             adaptive.close()
             
+            # Scraping sites d'emploi universels (Indeed, LinkedIn, etc.)
+            scraping_status = {"running": True, "progress": "🌐 Scraping sites d'emploi universels..."}
+            from scrapers.universal_scraper import UniversalJobScraper
+            universal = UniversalJobScraper(headless=True)
+            universal_jobs = universal.scrape_all(keywords, location, contract_type)
+            universal.close()
+            
             current_jobs.extend(corporate_jobs)
+            current_jobs.extend(universal_jobs)
             
             # Dédupliquer
             seen = set()
