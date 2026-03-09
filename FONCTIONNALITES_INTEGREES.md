@@ -194,7 +194,7 @@ Toutes les fonctionnalités sont maintenant **100% intégrées** dans l'interfac
 
 ## 🗄️ BASE DE DONNÉES POSTGRESQL
 
-### Tables créées:
+### Tables créées AUTOMATIQUEMENT:
 1. ✅ `users` - Utilisateurs
 2. ✅ `api_keys` - Clés API par provider
 3. ✅ `user_configs` - Configurations utilisateur
@@ -202,29 +202,29 @@ Toutes les fonctionnalités sont maintenant **100% intégrées** dans l'interfac
 5. ✅ `job_searches` - Historique recherches
 6. ✅ `job_offers` - Offres trouvées
 7. ✅ `applications` - Candidatures générées
-8. ✅ `alerts` - Alertes personnalisées
-9. ✅ `alert_notifications` - Notifications
-10. ✅ `alert_seen_jobs` - Offres déjà vues
-11. ⚠️ `application_tracking` - **À CRÉER SUR RAILWAY**
+8. ✅ `application_tracking` - Suivi candidatures avec relances
+9. ✅ `alerts` - Alertes personnalisées
+10. ✅ `alert_notifications` - Notifications
+11. ✅ `alert_seen_jobs` - Offres déjà vues
+
+**🎉 TOUTES les tables sont créées automatiquement au démarrage de l'app !**
+**❌ AUCUNE action manuelle requise !**
 
 ---
 
 ## 🚀 DÉPLOIEMENT RAILWAY
 
-### Fichiers créés:
-- ✅ `init_tracking_table.py` - Script pour créer la table application_tracking
+### 🎉 AUCUNE ACTION MANUELLE REQUISE !
 
-### À faire sur Railway:
 ```bash
 # 1. Déployer le code
-git add .
-git commit -m "Add ALL features: tracking, interview prep, smart matching"
 git push
 
-# 2. Créer la table application_tracking
-# Dans Railway CLI ou via Python console:
-python init_tracking_table.py
+# 2. C'est tout ! ✅
+# Toutes les tables PostgreSQL sont créées automatiquement au démarrage
 ```
+
+**L'application est 100% prête à l'emploi dès le déploiement !**
 
 ---
 
@@ -283,9 +283,10 @@ python init_tracking_table.py
 - [x] Modals pour analyse et préparation entretien
 - [x] Fonctions JavaScript: analyzeJob(), prepareInterview(), loadTracking(), addTracking()
 
-### Base de données (95% ✅)
-- [x] 10 tables créées et fonctionnelles
-- [ ] Table application_tracking à créer sur Railway (script prêt)
+### Base de données (100% ✅)
+- [x] 11 tables créées AUTOMATIQUEMENT au démarrage
+- [x] Aucune action manuelle requise
+- [x] Support PostgreSQL (Railway) et SQLite (local)
 
 ---
 
