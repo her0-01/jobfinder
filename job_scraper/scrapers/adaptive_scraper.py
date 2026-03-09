@@ -17,6 +17,8 @@ class AdaptiveScraper:
     def __init__(self, headless=True):
         self.logger = setup_logger('adaptive_scraper')
         self.logger.info("🚀 Initialisation AdaptiveScraper")
+        self.status_callback = None
+        self.status_callback = None
         
         # Smart Query Builder
         try:

@@ -166,8 +166,15 @@ def scrape_jobs():
                     search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
             
             # Scraping sites carrières avec IA Vision
-            scraping_status = {"running": True, "progress": "Scraping sites entreprises (IA Vision)..."}
             adaptive = AdaptiveScraper(headless=True)
+            
+            # Hook pour mettre à jour le statut
+            def update_status(company, index, total, jobs_count):
+                global scraping_status
+                scraping_status["running"] = True
+                scraping_status["progress"] = f"🏢 {company} ({index}/{total}) - {jobs_count} offres trouvées"
+            
+            adaptive.status_callback = update_status
             corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
             adaptive.close()
             
