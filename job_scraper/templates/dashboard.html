@@ -88,7 +88,19 @@
         .quick-actions { display: flex; gap: 10px; margin: 20px 0; }
         .search-suggestions { background: white; border: 2px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-top: 10px; display: none; }
         .suggestion-chip { display: inline-block; padding: 8px 16px; background: #edf2f7; border-radius: 20px; margin: 5px; cursor: pointer; transition: all 0.3s; }
-        .suggestion-chip:hover { background: #667eea; color: white; transform: scale(1.05); }
+        .job-card.premium { border: 3px solid gold; background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%); }
+        .premium-badge { position: absolute; top: -10px; left: 20px; background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #000; padding: 5px 15px; border-radius: 20px; font-weight: 700; font-size: 0.8em; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4); }
+        .auto-apply-btn { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .salary-badge { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 5px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 600; margin-left: 10px; }
+        .match-details { background: #f7fafc; padding: 15px; border-radius: 10px; margin-top: 15px; font-size: 0.9em; }
+        .skill-tag { display: inline-block; background: #edf2f7; padding: 4px 10px; border-radius: 12px; margin: 3px; font-size: 0.8em; }
+        .timeline { position: relative; padding-left: 30px; margin: 20px 0; }
+        .timeline-item { position: relative; padding-bottom: 20px; border-left: 2px solid #e2e8f0; padding-left: 20px; }
+        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: #667eea; }
+        .ai-insight { background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%); border-left: 4px solid #38b2ac; padding: 15px; border-radius: 10px; margin: 15px 0; }
+        .quick-filter { display: inline-block; padding: 8px 16px; background: white; border: 2px solid #e2e8f0; border-radius: 20px; margin: 5px; cursor: pointer; transition: all 0.3s; }
+        .quick-filter:hover, .quick-filter.active { background: #667eea; color: white; border-color: #667eea; }
     </style>
 </head>
 <body>
@@ -203,6 +215,7 @@
                         <option value="relevance">Pertinence (IA)</option>
                         <option value="date">Date</option>
                         <option value="company">Entreprise</option>
+                        <option value="salary">Salaire</option>
                     </select>
                     <label style="margin-left: 20px;">Filtrer:</label>
                     <select id="relevance-filter" onchange="filterJobs()">
@@ -212,6 +225,14 @@
                     </select>
                     <button class="btn btn-sm" onclick="toggleSuggestions()" style="margin-left: auto;">💡 Suggestions</button>
                     <button class="btn btn-sm export-btn" onclick="exportJobs()">📥 Export</button>
+                </div>
+                <div style="margin: 15px 0;">
+                    <strong>Filtres rapides:</strong><br>
+                    <span class="quick-filter" onclick="quickFilter('remote')">🏠 Remote</span>
+                    <span class="quick-filter" onclick="quickFilter('cdi')">📝 CDI</span>
+                    <span class="quick-filter" onclick="quickFilter('alternance')">🎓 Alternance</span>
+                    <span class="quick-filter" onclick="quickFilter('stage')">📚 Stage</span>
+                    <span class="quick-filter" onclick="quickFilter('urgent')">⚡ Urgent</span>
                 </div>
             </div>
         </div>
@@ -512,26 +533,34 @@
                 currentJobs.map((job, index) => {
                     const score = job.relevance_score || 50;
                     const relevanceClass = score >= 75 ? 'high' : score >= 50 ? 'medium' : 'low';
-                    const relevanceText = score >= 75 ? '🔥 Excellent match' : score >= 50 ? '✅ Bon match' : '💡 Match moyen';
+                    const isPremium = score >= 85;
+                    const salary = job.salary || '';
                     
                     return `
-                    <div class="job-card" data-relevance="${relevanceClass}">
+                    <div class="job-card ${isPremium ? 'premium' : ''}" data-relevance="${relevanceClass}">
+                        ${isPremium ? '<div class="premium-badge">⭐ TOP MATCH</div>' : ''}
                         <div class="relevance-badge relevance-${relevanceClass}">
                             ${Math.round(score)}%
                         </div>
                         <div class="job-header">
                             <div>
-                                <div class="job-title">${job.title}</div>
+                                <div class="job-title">${job.title}${salary ? `<span class="salary-badge">💰 ${salary}</span>` : ''}</div>
                                 <div class="job-company">🏢 ${job.company}</div>
                                 <div class="job-location">📍 ${job.location}</div>
                             </div>
                         </div>
                         <span class="job-source">${job.source}</span>
+                        ${isPremium ? `
+                        <div class="ai-insight">
+                            <strong>🤖 Insight IA:</strong> Excellent match ! Vos compétences correspondent parfaitement. Postulez rapidement.
+                        </div>
+                        ` : ''}
                         <div class="job-actions">
                             <button class="btn btn-fav btn-sm ${job.is_favorite ? 'active' : ''}" onclick="toggleFavorite(${index})" id="fav-${index}">
                                 ${job.is_favorite ? '❤️' : '♡'}
                             </button>
                             <button class="btn btn-success btn-sm" onclick="generateApplication(${index})">✨ Générer</button>
+                            <button class="btn btn-sm" onclick="copyJobInfo(${index})" style="background: #805ad5; color: white;">📋 Copier</button>
                             <a href="${job.link}" target="_blank" class="btn btn-primary btn-sm">🔗 Voir</a>
                         </div>
                     </div>
@@ -828,6 +857,36 @@
             link.click();
             
             showNotification(`✅ ${currentJobs.length} offres exportées`);
+        }
+
+        function quickFilter(type) {
+            const filters = document.querySelectorAll('.quick-filter');
+            filters.forEach(f => f.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const keyword = document.getElementById('keywords').value;
+            const typeMap = {
+                'remote': 'Remote',
+                'cdi': 'CDI',
+                'alternance': 'Alternance',
+                'stage': 'Stage',
+                'urgent': keyword
+            };
+            
+            if (type !== 'urgent') {
+                document.getElementById('keywords').value = keyword.split(' ')[0] + ' ' + typeMap[type];
+            }
+            
+            showNotification(`🎯 Filtre appliqué: ${typeMap[type]}`);
+        }
+
+        function copyJobInfo(index) {
+            const job = currentJobs[index];
+            const text = `${job.title}\n${job.company}\n${job.location}\n${job.link}`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('📋 Infos copiées dans le presse-papier !');
+            });
         }
     </script>
 </body>
