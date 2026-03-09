@@ -41,6 +41,10 @@ user_sessions = {}
 current_jobs = []
 scraping_status = {"running": False, "progress": ""}
 
+# Rendre scraping_status accessible globalement
+import builtins
+builtins.scraping_status = scraping_status
+
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):

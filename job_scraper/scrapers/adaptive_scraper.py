@@ -235,11 +235,15 @@ class AdaptiveScraper:
     
     def scrape_all_companies(self, keywords="Data Engineer", location="France", contract_type="Alternance"):
         """Scraper toutes les entreprises avec Smart Query Builder"""
+        import builtins
+        
         self.logger.info(f"\n{'='*60}")
         self.logger.info(f"🚀 DÉBUT SCRAPING MULTI-ENTREPRISES")
         self.logger.info(f"Keywords: {keywords} | Location: {location} | Contract: {contract_type}")
         self.logger.info(f"{'='*60}\n")
         print(f"\n🏢 Scraping sites carrières (adaptatif + IA)...\n")
+        
+        builtins.scraping_status = {"running": True, "progress": "🚀 Démarrage du scraping..."}
         
         # URLs de base (Smart Query Builder les optimisera)
         companies = {
@@ -261,13 +265,16 @@ class AdaptiveScraper:
         }
         
         for i, (company, url) in enumerate(companies.items(), 1):
+            builtins.scraping_status = {"running": True, "progress": f"🏢 Scraping {company} ({i}/{len(companies)})..."}
             self.logger.info(f"\n[{i}/{len(companies)}] Traitement {company}...")
             self.scrape_generic(url, company, keywords, location, contract_type)
+            builtins.scraping_status = {"running": True, "progress": f"✅ {company} terminé - {len(self.jobs)} offres totales"}
             time.sleep(2)
         
         self.logger.info(f"\n{'='*60}")
         self.logger.info(f"✅ SCRAPING TERMINÉ: {len(self.jobs)} offres totales")
         self.logger.info(f"{'='*60}\n")
+        builtins.scraping_status = {"running": False, "progress": f"✅ {len(self.jobs)} offres trouvées"}
         return self.jobs
     
     def close(self):
