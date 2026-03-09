@@ -8,10 +8,14 @@ Plateforme complète d'automatisation de recherche d'emploi avec agents IA et sc
 ## ✨ Fonctionnalités
 
 ### 💼 Job Application Bot
-- 🔍 **Scraping intelligent** de 15+ sites d'emploi (Indeed, LinkedIn, WTTJ, APEC, sites carrières...)
-- 🤖 **IA Vision** pour analyse automatique des formulaires de recherche
+- 🔍 **Scraping intelligent** de 23 sites d'emploi (Indeed, LinkedIn, WTTJ, APEC + 15 sites carrières)
+- 🤖 **IA Smart Query Builder** pour optimiser automatiquement les recherches
+- 📊 **Progression en temps réel** avec noms des sites scrapés
+- ⏹️ **Bouton STOP** pour arrêter et garder les résultats déjà trouvés
+- 📜 **Historique automatique** des recherches avec sauvegarde instantanée
+- 👥 **Multi-utilisateurs** avec authentification et base PostgreSQL
 - 📝 **Adaptation automatique** de CV et lettres de motivation par IA
-- 🎯 **Scoring de pertinence** des offres
+- 🎯 **Scoring de pertinence** des offres par IA
 - 🌐 **Interface web moderne** avec dashboard interactif
 - ✅ **Validation manuelle** (pas d'envoi automatique)
 
@@ -20,6 +24,7 @@ Plateforme complète d'automatisation de recherche d'emploi avec agents IA et sc
 - 🛡️ **Fallback automatique** entre providers
 - 📊 **Analyse de profil** GitHub et Portfolio
 - 💬 **Chat interactif** pour améliorer les candidatures
+- 🚀 **Déployé sur Railway** avec PostgreSQL
 
 ## 🚀 Installation Rapide
 
@@ -74,42 +79,69 @@ Ouvrez http://localhost:5001
 
 ## 🎯 Utilisation
 
-1. **Rechercher des offres**
-   - Entrez vos critères (mots-clés, localisation, type de contrat)
-   - Lancez le scraping (15+ sites analysés)
-   - Consultez les résultats avec score de pertinence
+### 1. **Créer un compte**
+   - Inscrivez-vous sur l'interface web
+   - Configurez vos clés API (Groq recommandé)
 
-2. **Générer une candidature**
+### 2. **Rechercher des offres**
+   - Entrez vos critères (mots-clés, localisation, type de contrat)
+   - Lancez le scraping (23 sites analysés en temps réel)
+   - Suivez la progression : "Bouygues (1/15)", "Indeed (1/8)"...
+   - Cliquez sur ⏹️ **STOP** à tout moment pour garder les résultats
+   - Consultez les résultats avec score de pertinence IA
+
+### 3. **Historique automatique**
+   - Onglet "📜 Historique" pour voir toutes vos recherches
+   - Sauvegarde automatique dès qu'il y a des résultats
+   - Rechargez les offres d'une ancienne recherche en 1 clic
+
+### 4. **Générer une candidature**
    - Sélectionnez une offre
    - L'IA adapte votre CV et génère une lettre personnalisée
    - Téléchargez les PDFs
 
-3. **Affiner avec le chat**
+### 5. **Affiner avec le chat**
    - Discutez avec l'IA pour améliorer vos documents
    - Modifications en temps réel
 
 ## 🛠️ Technologies
 
-- **Backend** : Python, Flask
-- **Scraping** : Selenium, BeautifulSoup, Undetected ChromeDriver
-- **IA** : Groq (Llama 3.3), Gemini, OpenAI
-- **Frontend** : HTML, CSS, JavaScript
+- **Backend** : Python, Flask, PostgreSQL
+- **Scraping** : Selenium, BeautifulSoup, Chromium (Railway)
+- **IA** : Groq (Llama 3.3), Gemini, OpenAI, Smart Query Builder
+- **Frontend** : HTML, CSS, JavaScript (temps réel)
 - **PDF** : LaTeX, Markdown
+- **Déploiement** : Railway avec PostgreSQL
 
 ## 🔐 Sécurité
 
-- ✅ Clés API non commitées (.gitignore)
-- ✅ Données personnelles locales uniquement
+- ✅ **Multi-utilisateurs** avec authentification sécurisée
+- ✅ **PostgreSQL** pour persistance des données
+- ✅ Clés API stockées par utilisateur
+- ✅ Sessions sécurisées avec tokens
 - ✅ Pas d'envoi automatique de candidatures
 - ✅ Validation manuelle obligatoire
 
-## 📊 Sites Supportés
+## 📊 Sites Supportés (23 sites)
 
-### Sites d'emploi
-- Indeed, LinkedIn, Welcome to the Jungle, APEC, Hellowork, Meteojob, Cadremploi, Monster
+### Sites d'emploi universels (8)
+- **Indeed** - Scraping avancé avec détection Cloudflare
+- **LinkedIn** - Jobs publics sans authentification
+- **Welcome to the Jungle** - Startups et scale-ups
+- **APEC** - Cadres et ingénieurs
+- **HelloWork** - Offres généralistes
+- **Meteojob** - Tous secteurs
+- **RegionsJob** - Offres régionales
+- **Monster** - International
 
-### Sites carrières (IA Vision)
-- Bouygues, Alstom, Stellantis, Renault, Société Générale, BNP Paribas, Schneider Electric, Safran, Thales, Airbus, Orange, Capgemini, Atos, Dassault Systèmes, TotalEnergies
+### Sites carrières entreprises (15)
+- **Bouygues, Alstom, Stellantis, Renault** - Industrie & Transport
+- **Société Générale, BNP Paribas** - Finance
+- **Schneider Electric, Safran, Thales, Airbus** - Aéronautique & Défense
+- **Orange, Capgemini, Atos, Dassault Systèmes** - Tech & IT
+- **TotalEnergies** - Énergie
+
+🤖 **Smart Query Builder IA** optimise automatiquement les URLs de recherche pour chaque site
 
 ## 🤝 Contribution
 

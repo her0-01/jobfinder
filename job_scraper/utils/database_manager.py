@@ -377,6 +377,9 @@ class DatabaseManager:
         """Sauvegarde une offre d'emploi"""
         cursor = self.conn.cursor()
         
+        # Support 'link' ou 'url'
+        url = offer_data.get('link') or offer_data.get('url')
+        
         cursor.execute(
             '''INSERT INTO job_offers 
                (search_id, user_id, title, company, location, url, description, relevance_score, source_site)
@@ -385,7 +388,7 @@ class DatabaseManager:
                     (search_id, user_id, title, company, location, url, description, relevance_score, source_site)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (search_id, user_id, offer_data.get('title'), offer_data.get('company'),
-             offer_data.get('location'), offer_data.get('url'), offer_data.get('description'),
+             offer_data.get('location'), url, offer_data.get('description'),
              offer_data.get('relevance_score'), offer_data.get('source'))
         )
         self.conn.commit()

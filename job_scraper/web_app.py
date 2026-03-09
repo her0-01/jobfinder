@@ -177,7 +177,8 @@ def scrape_jobs():
                     global scraping_status, stop_scraping
                     if stop_scraping:
                         return
-                    scraping_status = {"running": True, "progress": f"🏢 {company} ({index}/{total}) • {jobs_count} offres trouvées", "can_stop": True}
+                    # index/total pour sites carrières (sur 15), puis on ajoutera 8 pour universels
+                    scraping_status = {"running": True, "progress": f"🏢 {company} ({index}/15) • {len(current_jobs)} offres trouvées", "can_stop": True}
                 
                 adaptive.status_callback = update_status
                 adaptive.stop_flag = lambda: stop_scraping
@@ -195,6 +196,16 @@ def scrape_jobs():
                 from scrapers.universal_scraper import UniversalJobScraper
                 scraping_status = {"running": True, "progress": "🌐 Initialisation scraper universel...", "can_stop": True}
                 universal = UniversalJobScraper(headless=True)
+                
+                def update_status_universal(site, index, total, jobs_count):
+                    global scraping_status, stop_scraping
+                    if stop_scraping:
+                        return
+                    # 15 sites carrières déjà faits + index sur 8 sites universels
+                    total_progress = 15 + index
+                    scraping_status = {"running": True, "progress": f"🌐 {site} ({total_progress}/23) • {len(current_jobs)} offres trouvées", "can_stop": True}
+                
+                universal.status_callback = update_status_universal
                 universal_jobs = universal.scrape_all(keywords, location, contract_type)
                 universal.close()
                 current_jobs.extend(universal_jobs)

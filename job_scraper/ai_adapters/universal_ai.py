@@ -219,8 +219,11 @@ class UniversalAIAdapter:
         models = self.get_available_models()
         last_error = None
         
+        print(f"    🔍 IA: Tentative avec {self.provider.upper()} ({len(models)} modèles disponibles)")
+        
         for i, model in enumerate(models):
             try:
+                print(f"    🚀 IA: Essai modèle {model}...")
                 result = self.chat_completion(
                     messages=messages,
                     model=model,
@@ -231,6 +234,7 @@ class UniversalAIAdapter:
                 
                 # Vérifier que la réponse n'est pas vide
                 if result and result.strip():
+                    print(f"    ✅ IA: Réponse OK avec {model}")
                     return result
                     
             except Exception as e:

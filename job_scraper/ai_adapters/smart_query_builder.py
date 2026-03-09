@@ -44,6 +44,8 @@ class SmartQueryBuilder:
     def _analyze_with_ai(self, site_url, html_sample):
         """Utilise l'IA pour analyser et construire l'URL de recherche"""
         
+        print(f"    🤖 IA: Analyse HTML du site...")
+        
         # Prompt ultra-simple et court pour tous les providers
         prompt = f"""Site: {site_url}
 
@@ -56,6 +58,7 @@ Exemple: si tu vois "?q=test&location=paris", réponds {{"keywords":"q","locatio
 JSON uniquement:"""
 
         try:
+            print(f"    📤 IA: Envoi requête au modèle...")
             response = self.ai.chat_completion_with_fallback(
                 messages=[
                     {"role": "user", "content": prompt}
@@ -64,6 +67,9 @@ JSON uniquement:"""
                 max_tokens=100,
                 json_mode=True
             )
+            
+            print(f"    📬 IA: Réponse reçue ({len(response)} caractères)")
+            print(f"    📝 IA: {response[:100]}...")
             
             # Nettoyage agressif pour tous les providers
             cleaned = response.strip()

@@ -112,7 +112,10 @@ class AdaptiveScraper:
         try:
             # Utiliser Smart Query Builder si disponible
             if self.smart_query:
-                self.logger.info(f"🤖 Utilisation Smart Query Builder ({self.ai_provider})...")
+                self.logger.info(f"🤖 IA SMART QUERY BUILDER ACTIVÉE ({self.ai_provider})")
+                print(f"  🤖 IA: Analyse du site {company_name} avec {self.ai_provider}...")
+                self.logger.info(f"📤 Envoi requête IA pour analyser: {url[:80]}...")
+                
                 optimized_url = self.smart_query.analyze_and_build_url(
                     site_url=url,
                     keywords=keywords,
@@ -120,8 +123,15 @@ class AdaptiveScraper:
                     contract_type=contract_type,
                     driver=self.driver
                 )
-                self.logger.info(f"✅ URL optimisée: {optimized_url[:100]}...")
+                
+                self.logger.info(f"✅ IA a optimisé l'URL")
+                self.logger.info(f"📍 URL originale: {url[:100]}")
+                self.logger.info(f"🎯 URL optimisée: {optimized_url[:100]}")
+                print(f"  ✅ IA: URL optimisée pour {company_name}")
                 url = optimized_url
+            else:
+                self.logger.info("⚠️ Smart Query Builder désactivé - URL directe")
+                print(f"  ⚠️ Pas d'IA - URL directe pour {company_name}")
             
             self.logger.debug("Chargement de la page...")
             self.driver.get(url)

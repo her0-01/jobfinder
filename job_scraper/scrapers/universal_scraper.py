@@ -18,6 +18,7 @@ class UniversalJobScraper:
     def __init__(self, headless=True):
         self.logger = setup_logger('universal_scraper')
         self.logger.info("🚀 Initialisation UniversalJobScraper")
+        self.status_callback = None  # Callback pour progression
         
         # Smart Query Builder
         try:
@@ -81,14 +82,22 @@ class UniversalJobScraper:
         """Scraper tous les sites"""
         print(f"\n🔍 Recherche: {keywords} | {location} | {contract_type}\n")
         
-        self.scrape_indeed(keywords, location, contract_type)
-        self.scrape_linkedin(keywords, location)
-        self.scrape_welcometothejungle(keywords, location)
-        self.scrape_apec(keywords, location)
-        self.scrape_hellowork(keywords, location)
-        self.scrape_meteojob(keywords, location)
-        self.scrape_regionsjob(keywords, location)
-        self.scrape_monster(keywords, location)
+        sites = [
+            ('Indeed', self.scrape_indeed),
+            ('LinkedIn', self.scrape_linkedin),
+            ('WTTJ', self.scrape_welcometothejungle),
+            ('APEC', self.scrape_apec),
+            ('HelloWork', self.scrape_hellowork),
+            ('Meteojob', self.scrape_meteojob),
+            ('RegionsJob', self.scrape_regionsjob),
+            ('Monster', self.scrape_monster)
+        ]
+        
+        for i, (site_name, scrape_func) in enumerate(sites, 1):
+            if self.status_callback:
+                self.status_callback(site_name, i, len(sites), len(self.jobs))
+            print(f"\n[{i}/{len(sites)}] 🌐 {site_name}...")
+            scrape_func(keywords, location, contract_type)
         
         return self.jobs
     
