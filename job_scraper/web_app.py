@@ -20,6 +20,8 @@ from datetime import datetime
 import threading
 from functools import wraps
 
+from alert_scheduler import alert_system
+
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
@@ -642,6 +644,9 @@ def download_pdf(folder_name, doc_type):
     return send_file(file_path, as_attachment=True)
 
 if __name__ == '__main__':
+    # Démarrer le système d'alertes en arrière-plan
+    alert_system.start_background_checker()
+    
     port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 

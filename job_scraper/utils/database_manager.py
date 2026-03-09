@@ -506,6 +506,58 @@ class DatabaseManager:
             'scraped_at': row['scraped_at'] if self.use_postgres else row[10]
         } for row in jobs]
     
+    def save_alert_notification(self, alert_id, user_id, job):
+        """Sauvegarder une notification d'alerte"""
+        query = """INSERT INTO alert_notifications (alert_id, user_id, job_title, job_company, job_link, created_at) 
+                   VALUES (%s, %s, %s, %s, %s, NOW())"""
+        self.execute_query(query, (alert_id, user_id, job['title'], job['company'], job['link']))
+    
+    def get_user_notifications(self, user_id, unread_only=False):
+        """Récupérer les notifications d'un utilisateur"""
+        query = "SELECT * FROM alert_notifications WHERE user_id = %s"
+        if unread_only:
+            query += " AND read = FALSE"
+        query += " ORDER BY created_at DESC LIMIT 50"
+        return self.execute_query(query, (user_id,), fetch=True)
+    
+    def mark_notification_read(self, notification_id):
+        """Marquer une notification comme lue"""
+        query = "UPDATE alert_notifications SET read = TRUE WHERE id = %s"
+        self.execute_query(query, (notification_id,))
+    
+    def get_unread_count(self, user_id):
+        """Compter les notifications non lues"""
+        query = "SELECT COUNT(*) FROM alert_notifications WHERE user_id = %s AND read = FALSE"
+        result = self.execute_query(query, (user_id,), fetch=True)
+        return result[0][0] if result else 0
+
+    def get_active_alerts(self):
+        """Récupérer toutes les alertes actives"""
+        query = "SELECT * FROM alerts WHERE active = TRUE"
+        return self.execute_query(query, fetch=True)
+    
+    def update_alert_last_check(self, alert_id):
+        """Mettre à jour la date de dernière vérification"""
+        query = "UPDATE alerts SET last_check = NOW() WHERE id = %s"
+        self.execute_query(query, (alert_id,))
+    
+    def get_seen_job_links(self, alert_id):
+        """Récupérer les liens d'offres déjà vues pour une alerte"""
+        query = "SELECT job_link FROM alert_seen_jobs WHERE alert_id = %s"
+        results = self.execute_query(query, (alert_id,), fetch=True)
+        return [r[0] for r in results] if results else []
+    
+    def mark_job_as_seen(self, alert_id, job_link):
+        """Marquer une offre comme vue"""
+        query = "INSERT INTO alert_seen_jobs (alert_id, job_link, seen_at) VALUES (%s, %s, NOW()) ON CONFLICT DO NOTHING"
+        self.execute_query(query, (alert_id, job_link))
+    
+    def get_user_by_id(self, user_id):
+        """Récupérer un utilisateur par ID"""
+        query = "SELECT * FROM users WHERE id = %s"
+        result = self.execute_query(query, (user_id,), fetch=True)
+        return result[0] if result else None
+
     def close(self):
         """Ferme la connexion à la base de données"""
         if self.conn:

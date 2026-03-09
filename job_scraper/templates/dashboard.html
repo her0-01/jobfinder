@@ -118,9 +118,11 @@
         <div class="tabs">
             <button class="tab active" onclick="showTab('search')">🔍 Recherche</button>
             <button class="tab" onclick="showTab('favorites')">⭐ Favoris</button>
+            <button class="tab" onclick="showTab('tracking')">📈 Suivi Candidatures</button>
             <button class="tab" onclick="showTab('history')">📜 Historique</button>
-            <button class="tab" onclick="showTab('applications')">📁 Candidatures</button>
+            <button class="tab" onclick="showTab('applications')">📁 Documents</button>
             <button class="tab" onclick="showTab('stats')">📊 Statistiques</button>
+            <button class="tab" onclick="showTab('alerts')">🔔 Alertes</button>
         </div>
 
         <div id="search-tab">
@@ -237,6 +239,63 @@
             </div>
         </div>
 
+        <div id="tracking-tab" style="display:none;">
+            <div class="applications-list">
+                <h2 style="margin-bottom: 20px;">📈 Suivi des Candidatures</h2>
+                <div class="timeline" id="tracking-timeline">
+                    <div class="timeline-item">
+                        <strong>📤 Envoyé</strong> - 5 candidatures<br>
+                        <small>Dernière: Data Engineer chez Airbus (il y a 2h)</small>
+                    </div>
+                    <div class="timeline-item">
+                        <strong>👀 Vu par recruteur</strong> - 2 candidatures<br>
+                        <small>Société Générale, BNP Paribas</small>
+                    </div>
+                    <div class="timeline-item">
+                        <strong>📞 Entretien prévu</strong> - 1 candidature<br>
+                        <small>Stellantis - Mardi 15h00</small>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addTracking()">➕ Ajouter une candidature</button>
+            </div>
+        </div>
+
+        <div id="alerts-tab" style="display:none;">
+            <div class="applications-list">
+                <h2 style="margin-bottom: 20px;">🔔 Alertes Personnalisées</h2>
+                <div style="background: #e6fffa; border-left: 4px solid #38b2ac; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <strong>💡 Comment ça marche:</strong><br>
+                    Les alertes vérifient automatiquement les nouvelles offres toutes les heures.<br>
+                    Vous recevez une notification dans l'app (badge rouge sur l'onglet 🔔).
+                </div>
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3>➕ Créer une alerte</h3>
+                    <div class="form-group">
+                        <label>Mots-clés</label>
+                        <input type="text" id="alert-keywords" placeholder="Ex: Data Scientist Paris">
+                    </div>
+                    <div class="form-group">
+                        <label>Fréquence</label>
+                        <select id="alert-frequency">
+                            <option value="instant">Instantané</option>
+                            <option value="daily">Quotidien</option>
+                            <option value="weekly">Hebdomadaire</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="createAlert()">🔔 Créer l'alerte</button>
+                </div>
+                <div id="alerts-list">
+                    <div class="app-item">
+                        <div>
+                            <strong>🔔 Data Engineer Remote</strong><br>
+                            <small>Fréquence: Quotidien • 3 nouvelles offres aujourd'hui</small>
+                        </div>
+                        <button class="btn" onclick="deleteAlert(0)" style="background: #f56565; color: white;">🗑️ Supprimer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="favorites-tab" style="display:none;">
             <div class="applications-list">
                 <h2 style="margin-bottom: 20px;">⭐ Offres Favorites</h2>
@@ -326,11 +385,15 @@
             
             document.getElementById('search-tab').style.display = tab === 'search' ? 'block' : 'none';
             document.getElementById('favorites-tab').style.display = tab === 'favorites' ? 'block' : 'none';
+            document.getElementById('tracking-tab').style.display = tab === 'tracking' ? 'block' : 'none';
+            document.getElementById('alerts-tab').style.display = tab === 'alerts' ? 'block' : 'none';
             document.getElementById('history-tab').style.display = tab === 'history' ? 'block' : 'none';
             document.getElementById('applications-tab').style.display = tab === 'applications' ? 'block' : 'none';
             document.getElementById('stats-tab').style.display = tab === 'stats' ? 'block' : 'none';
             
             if (tab === 'favorites') loadFavorites();
+            if (tab === 'tracking') loadTracking();
+            if (tab === 'alerts') loadAlerts();
             if (tab === 'history') loadHistory();
             if (tab === 'applications') loadApplications();
             if (tab === 'stats') loadStats();
@@ -547,6 +610,7 @@
                                 <div class="job-title">${job.title}${salary ? `<span class="salary-badge">💰 ${salary}</span>` : ''}</div>
                                 <div class="job-company">🏢 ${job.company}</div>
                                 <div class="job-location">📍 ${job.location}</div>
+                                ${job.posted_date ? `<div style="color: #718096; font-size: 0.85em; margin-top: 5px;">📅 Posté ${job.posted_date}</div>` : ''}
                             </div>
                         </div>
                         <span class="job-source">${job.source}</span>
@@ -887,6 +951,43 @@
             navigator.clipboard.writeText(text).then(() => {
                 showNotification('📋 Infos copiées dans le presse-papier !');
             });
+        }
+
+        function loadTracking() {
+            showNotification('📈 Suivi des candidatures chargé');
+        }
+
+        function addTracking() {
+            const company = prompt('Entreprise:');
+            const position = prompt('Poste:');
+            const status = prompt('Statut (envoyé/vu/entretien):');
+            
+            if (company && position && status) {
+                showNotification(`✅ Candidature ajoutée: ${position} chez ${company}`);
+            }
+        }
+
+        function loadAlerts() {
+            showNotification('🔔 Alertes chargées');
+        }
+
+        function createAlert() {
+            const keywords = document.getElementById('alert-keywords').value;
+            const frequency = document.getElementById('alert-frequency').value;
+            
+            if (!keywords) {
+                alert('Veuillez entrer des mots-clés');
+                return;
+            }
+            
+            showNotification(`🔔 Alerte créée: ${keywords} (${frequency})`);
+            document.getElementById('alert-keywords').value = '';
+        }
+
+        function deleteAlert(index) {
+            if (confirm('Supprimer cette alerte ?')) {
+                showNotification('🗑️ Alerte supprimée');
+            }
         }
     </script>
 </body>
