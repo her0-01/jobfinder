@@ -390,20 +390,31 @@
         }
 
         async function loadSearchJobs(searchId) {
-            const response = await fetch(`/api/search/${searchId}/jobs`);
-            currentJobs = await response.json();
+            console.log('Loading jobs for search:', searchId);
             
-            // Changer vers l'onglet recherche
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab')[0].classList.add('active');
-            
-            document.getElementById('search-tab').style.display = 'block';
-            document.getElementById('history-tab').style.display = 'none';
-            document.getElementById('applications-tab').style.display = 'none';
-            
-            // Calculer scores et afficher
-            await calculateRelevanceScores();
-            displayJobs();
+            try {
+                const response = await fetch(`/api/search/${searchId}/jobs`);
+                if (!response.ok) throw new Error('Failed to load jobs');
+                
+                currentJobs = await response.json();
+                console.log('Loaded jobs:', currentJobs.length);
+                
+                // Changer vers l'onglet recherche
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                
+                document.getElementById('search-tab').style.display = 'block';
+                document.getElementById('favorites-tab').style.display = 'none';
+                document.getElementById('history-tab').style.display = 'none';
+                document.getElementById('applications-tab').style.display = 'none';
+                document.getElementById('stats-tab').style.display = 'none';
+                
+                // Afficher directement sans recalculer les scores
+                displayJobs();
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                alert('Erreur lors du chargement des offres');
+            }
         }
 
         async function loadJobs() {
