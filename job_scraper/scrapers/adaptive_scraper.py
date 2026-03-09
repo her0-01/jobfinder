@@ -228,7 +228,16 @@ class AdaptiveScraper:
                 
                 if any(kw in text for kw in keywords_lower) or any(tech in text for tech in tech_keywords):
                     matched_links += 1
-                    full_url = href if href.startswith('http') else (url.rstrip('/') + '/' + href.lstrip('/'))
+                    
+                    # Construire URL complète proprement
+                    if href.startswith('http'):
+                        full_url = href
+                    else:
+                        # Extraire domaine de base sans paramètres
+                        from urllib.parse import urlparse
+                        parsed = urlparse(url)
+                        base_url = f"{parsed.scheme}://{parsed.netloc}"
+                        full_url = base_url + href if href.startswith('/') else f"{base_url}/{href}"
                     
                     job_links.append({
                         'title': link.get_text().strip(),
