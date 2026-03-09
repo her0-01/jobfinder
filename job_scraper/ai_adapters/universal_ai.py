@@ -20,8 +20,11 @@ class UniversalAIAdapter:
         try:
             if self.provider == 'groq':
                 from groq import Groq
+                import groq
+                print(f"🔍 Groq version: {groq.__version__ if hasattr(groq, '__version__') else 'unknown'}")
                 # Version 0.11.0+ n'a plus de param proxies
                 self.client = Groq(api_key=self.api_key)
+                print(f"✅ Groq client initialisé")
             
             elif self.provider == 'openai':
                 from openai import OpenAI
@@ -32,7 +35,9 @@ class UniversalAIAdapter:
                 genai.configure(api_key=self.api_key)
                 self.client = genai
         except Exception as e:
-            print(f"⚠️ Erreur init {self.provider}: {e}")
+            print(f"❌ Erreur init {self.provider}: {e}")
+            import traceback
+            traceback.print_exc()
             self.client = None
     
     def get_available_models(self) -> List[str]:

@@ -20,10 +20,21 @@ class AdaptiveScraper:
         self.status_callback = None
         self.stop_flag = None
         
-        # Smart Query Builder - DÉSACTIVÉ temporairement
-        self.smart_query = None
-        self.ai_provider = "AUCUN"
-        print("⚠️ Smart Query Builder désactivé (mode fallback)")
+        # Smart Query Builder
+        try:
+            config = configparser.ConfigParser()
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.ini')
+            config.read(config_path)
+            
+            self.ai_provider = config.get('API', 'ai_provider', fallback='groq').upper()
+            
+            from ai_adapters.smart_query_builder import SmartQueryBuilder
+            self.smart_query = SmartQueryBuilder()
+            print(f"✅ Smart Query Builder activé ({self.ai_provider})")
+        except Exception as e:
+            self.smart_query = None
+            self.ai_provider = "AUCUN"
+            print(f"⚠️ Smart Query Builder désactivé: {e}")
         
         # Driver setup
         try:
@@ -99,8 +110,18 @@ class AdaptiveScraper:
         self.logger.info(f"🔍 Méthode classique pour {company_name}")
         
         try:
-            # Smart Query Builder désactivé - utiliser URL directe
-            self.logger.info(f"🔗 URL directe: {url}")
+            # Utiliser Smart Query Builder si disponible
+            if self.smart_query:
+                self.logger.info(f"🤖 Utilisation Smart Query Builder ({self.ai_provider})...")
+                optimized_url = self.smart_query.analyze_and_build_url(
+                    site_url=url,
+                    keywords=keywords,
+                    location=location,
+                    contract_type=contract_type,
+                    driver=self.driver
+                )
+                self.logger.info(f"✅ URL optimisée: {optimized_url[:100]}...")
+                url = optimized_url
             
             self.logger.debug("Chargement de la page...")
             self.driver.get(url)

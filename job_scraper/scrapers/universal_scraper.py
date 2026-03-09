@@ -34,30 +34,46 @@ class UniversalJobScraper:
         
         # Driver setup
         try:
-            chrome_paths = [
-                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
-            ]
-            
-            chrome_path = None
-            for path in chrome_paths:
-                if os.path.exists(path):
-                    chrome_path = path
-                    break
-            
-            if chrome_path:
-                self.driver = uc.Chrome(browser_executable_path=chrome_path, version_main=145)
-                self.logger.info("✓ Chrome (undetected) initialisé")
-            else:
-                raise FileNotFoundError("Chrome non trouvé")
+            # Essayer Chromium en premier (Railway/Linux)
+            try:
+                from selenium import webdriver as wd
+                options = wd.ChromeOptions()
+                options.binary_location = '/usr/bin/chromium'
+                options.add_argument('--headless')
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument('--disable-blink-features=AutomationControlled')
+                self.driver = wd.Chrome(options=options)
+                self.logger.info("✅ Chromium initialisé")
+            except Exception as chromium_error:
+                self.logger.warning(f"⚠️ Chromium échoué: {chromium_error}")
+                
+                # Fallback Chrome Windows
+                chrome_paths = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                    os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
+                ]
+                
+                chrome_path = None
+                for path in chrome_paths:
+                    if os.path.exists(path):
+                        chrome_path = path
+                        break
+                
+                if chrome_path:
+                    import undetected_chromedriver as uc
+                    self.driver = uc.Chrome(browser_executable_path=chrome_path, version_main=145)
+                    self.logger.info("✅ Chrome (undetected) initialisé")
+                else:
+                    raise FileNotFoundError("Chrome non trouvé")
         except Exception as e:
             self.logger.warning(f"⚠️ Chrome échoué: {e}, utilisation Edge")
             from selenium import webdriver
             options = webdriver.EdgeOptions()
             options.add_argument('--disable-blink-features=AutomationControlled')
             self.driver = webdriver.Edge(options=options)
-            self.logger.info("✓ Edge initialisé")
+            self.logger.info("✅ Edge initialisé")
         
         self.jobs = []
     

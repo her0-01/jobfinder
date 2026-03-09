@@ -188,18 +188,12 @@ def scrape_jobs():
             # Scraping sites universels
             if not stop_scraping:
                 from scrapers.universal_scraper import UniversalJobScraper
+                scraping_status = {"running": True, "progress": "🌐 Initialisation scraper universel...", "can_stop": True}
                 universal = UniversalJobScraper(headless=True)
-                
-                sites = ['Indeed', 'LinkedIn', 'Welcome to the Jungle', 'APEC', 'Hellowork', 'Meteojob', 'Cadremploi', 'Monster']
-                for i, site in enumerate(sites, 1):
-                    if stop_scraping:
-                        break
-                    scraping_status = {"running": True, "progress": f"🌐 {site} ({i}/{len(sites)}) • {len(current_jobs)} offres trouvées", "can_stop": True}
-                    time.sleep(0.5)  # Laisser l'UI se mettre à jour
-                
                 universal_jobs = universal.scrape_all(keywords, location, contract_type)
                 universal.close()
                 current_jobs.extend(universal_jobs)
+                scraping_status = {"running": True, "progress": f"✅ Sites universels: {len(universal_jobs)} offres", "can_stop": True}
             
             # Dédupliquer et sauvegarder
             seen = set()
