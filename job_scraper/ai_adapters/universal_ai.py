@@ -12,22 +12,28 @@ class UniversalAIAdapter:
         self.provider = provider.lower()
         self.api_key = api_key
         self.client = None
-        self._init_client()
+        if api_key:  # Seulement init si API key fournie
+            self._init_client()
     
     def _init_client(self):
         """Initialise le client selon le provider"""
-        if self.provider == 'groq':
-            from groq import Groq
-            self.client = Groq(api_key=self.api_key)
-        
-        elif self.provider == 'openai':
-            from openai import OpenAI
-            self.client = OpenAI(api_key=self.api_key)
-        
-        elif self.provider == 'gemini':
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            self.client = genai
+        try:
+            if self.provider == 'groq':
+                from groq import Groq
+                # Version 0.11.0+ n'a plus de param proxies
+                self.client = Groq(api_key=self.api_key)
+            
+            elif self.provider == 'openai':
+                from openai import OpenAI
+                self.client = OpenAI(api_key=self.api_key)
+            
+            elif self.provider == 'gemini':
+                import google.generativeai as genai
+                genai.configure(api_key=self.api_key)
+                self.client = genai
+        except Exception as e:
+            print(f"⚠️ Erreur init {self.provider}: {e}")
+            self.client = None
     
     def get_available_models(self) -> List[str]:
         """Retourne la liste des modèles disponibles"""

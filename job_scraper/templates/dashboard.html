@@ -92,7 +92,8 @@
 
         <div class="tabs">
             <button class="tab active" onclick="showTab('search')">🔍 Recherche</button>
-            <button class="tab" onclick="showTab('applications')">📁 Candidatures Générées</button>
+            <button class="tab" onclick="showTab('history')">📜 Historique</button>
+            <button class="tab" onclick="showTab('applications')">📁 Candidatures</button>
         </div>
 
         <div id="search-tab">
@@ -119,7 +120,8 @@
                     </select>
                 </div>
 
-                <button class="btn btn-primary" onclick="startScraping()">🚀 Lancer la Recherche</button>
+                <button class="btn btn-primary" onclick="startScraping()" id="start-btn">🚀 Lancer la Recherche</button>
+                <button class="btn" onclick="stopScraping()" id="stop-btn" style="display:none; background: linear-gradient(135deg, #f56565 0%, #c53030 100%); color: white;">⏹️ Arrêter</button>
                 
                 <div id="status" class="status" style="display:none;">
                     <div class="progress-container">
@@ -151,6 +153,13 @@
                         <option value="medium">Moyenne et haute</option>
                     </select>
                 </div>
+            </div>
+        </div>
+
+        <div id="history-tab" style="display:none;">
+            <div class="applications-list">
+                <h2 style="margin-bottom: 20px;">📜 Historique des Recherches</h2>
+                <div id="history-list"></div>
             </div>
         </div>
 
@@ -194,14 +203,12 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
             
-            if (tab === 'search') {
-                document.getElementById('search-tab').style.display = 'block';
-                document.getElementById('applications-tab').style.display = 'none';
-            } else {
-                document.getElementById('search-tab').style.display = 'none';
-                document.getElementById('applications-tab').style.display = 'block';
-                loadApplications();
-            }
+            document.getElementById('search-tab').style.display = tab === 'search' ? 'block' : 'none';
+            document.getElementById('history-tab').style.display = tab === 'history' ? 'block' : 'none';
+            document.getElementById('applications-tab').style.display = tab === 'applications' ? 'block' : 'none';
+            
+            if (tab === 'history') loadHistory();
+            if (tab === 'applications') loadApplications();
         }
 
         async function startScraping() {
@@ -212,7 +219,9 @@
             const status = document.getElementById('status');
             status.style.display = 'block';
             
-            // Réinitialiser l'UI
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'inline-block';
+            
             document.getElementById('progress-bar').style.width = '0%';
             document.getElementById('status-details').innerHTML = '';
             document.getElementById('status-stats').innerHTML = '';
@@ -232,6 +241,17 @@
             checkStatus(timerInterval);
         }
 
+        async function stopScraping() {
+            if (!confirm('Arrêter le scraping et garder les offres déjà trouvées ?')) return;
+            
+            await fetch('/api/scrape/stop', {
+                method: 'POST'
+            });
+            
+            document.getElementById('stop-btn').disabled = true;
+            document.getElementById('stop-btn').textContent = '⏳ Arrêt en cours...';
+        }
+
         async function checkStatus(timerInterval) {
             const response = await fetch('/api/status');
             const status = await response.json();
@@ -242,32 +262,42 @@
             // Parser le message de progression
             const progress = status.progress || '';
             
-            // Extraire les informations
-            if (progress.includes('Scraping')) {
+            // Afficher le site en cours
+            if (progress.includes('🏢') || progress.includes('🌐')) {
                 const detailsDiv = document.getElementById('status-details');
                 const line = document.createElement('div');
                 line.className = 'status-line';
-                line.innerHTML = `<span class="status-icon">🔄</span><span>${progress}</span>`;
+                const icon = progress.includes('🏢') ? '🏢' : '🌐';
+                line.innerHTML = `<span class="status-icon">${icon}</span><span>${progress}</span>`;
                 detailsDiv.appendChild(line);
                 detailsDiv.scrollTop = detailsDiv.scrollHeight;
+                
+                // Limiter à 10 lignes
+                while (detailsDiv.children.length > 10) {
+                    detailsDiv.removeChild(detailsDiv.firstChild);
+                }
             }
             
             // Extraire le nombre d'offres
             const match = progress.match(/(\d+)\s+offres/);
             if (match) {
                 const count = parseInt(match[1]);
-                const progressPercent = Math.min(100, (count / 50) * 100);
+                const progressPercent = Math.min(100, (count / 100) * 100);
                 document.getElementById('progress-bar').style.width = progressPercent + '%';
                 document.getElementById('progress-bar').textContent = count + ' offres';
                 
-                // Afficher les stats
+                // Stats
+                const sitesMatch = progress.match(/\((\d+)\/(\d+)\)/);
+                const sitesScraped = sitesMatch ? sitesMatch[1] : '?';
+                const totalSites = sitesMatch ? sitesMatch[2] : '23';
+                
                 document.getElementById('status-stats').innerHTML = `
                     <div class="stat-card">
                         <div class="number">${count}</div>
                         <div class="label">Offres trouvées</div>
                     </div>
                     <div class="stat-card">
-                        <div class="number">${Math.floor(count / 15)}</div>
+                        <div class="number">${sitesScraped}/${totalSites}</div>
                         <div class="label">Sites scrapés</div>
                     </div>
                 `;
@@ -278,8 +308,45 @@
             } else {
                 clearInterval(timerInterval);
                 document.getElementById('progress-bar').style.width = '100%';
+                document.getElementById('start-btn').style.display = 'inline-block';
+                document.getElementById('stop-btn').style.display = 'none';
+                document.getElementById('stop-btn').disabled = false;
+                document.getElementById('stop-btn').textContent = '⏹️ Arrêter';
                 loadJobs();
             }
+        }
+
+        async function loadHistory() {
+            const response = await fetch('/api/searches');
+            const searches = await response.json();
+            
+            const list = document.getElementById('history-list');
+            if (searches.length === 0) {
+                list.innerHTML = '<p style="text-align: center; padding: 40px; color: #718096;">Aucune recherche enregistrée</p>';
+                return;
+            }
+            
+            list.innerHTML = searches.map(search => `
+                <div class="app-item">
+                    <div>
+                        <strong>🔍 ${search.search_query || search[2]}</strong><br>
+                        <small>📍 ${search.location || search[3]} • ${search.contract_type || search[4]} • ${search.jobs_count || search[search.length-1]} offres trouvées</small><br>
+                        <small style="color: #a0aec0;">${new Date(search.created_at || search[5]).toLocaleString('fr-FR')}</small>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="loadSearchJobs(${search.id || search[0]})">📂 Voir les offres</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadSearchJobs(searchId) {
+            const response = await fetch(`/api/search/${searchId}/jobs`);
+            currentJobs = await response.json();
+            
+            showTab('search');
+            document.querySelector('.tab').click();
+            displayJobs();
         }
 
         async function loadJobs() {
@@ -312,7 +379,12 @@
             const container = document.getElementById('jobs-container');
             const filterBar = container.querySelector('.filter-bar');
             
-            let html = filterBar.outerHTML;
+            if (!currentJobs || currentJobs.length === 0) {
+                container.innerHTML = (filterBar ? filterBar.outerHTML : '') + '<p style="text-align: center; padding: 40px; color: #718096;">Aucune offre trouvée. Lancez une recherche !</p>';
+                return;
+            }
+            
+            let html = (filterBar ? filterBar.outerHTML : '');
             html += '<h2 style="margin: 20px 0;">🎯 Offres Trouvées (' + currentJobs.length + ')</h2><div class="jobs-grid">' +
                 currentJobs.map((job, index) => {
                     const score = job.relevance_score || 50;
@@ -322,7 +394,7 @@
                     return `
                     <div class="job-card" data-relevance="${relevanceClass}">
                         <div class="relevance-badge relevance-${relevanceClass}">
-                            ${Math.round(score)}% ${relevanceText}
+                            ${Math.round(score)}%
                         </div>
                         <div class="job-header">
                             <div>

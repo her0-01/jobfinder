@@ -18,6 +18,7 @@ class AdaptiveScraper:
         self.logger = setup_logger('adaptive_scraper')
         self.logger.info("🚀 Initialisation AdaptiveScraper")
         self.status_callback = None
+        self.stop_flag = None
         
         # Smart Query Builder
         try:
@@ -266,7 +267,15 @@ class AdaptiveScraper:
         }
         
         for i, (company, url) in enumerate(companies.items(), 1):
+            # Vérifier si arrêt demandé
+            if self.stop_flag and self.stop_flag():
+                self.logger.info("⏹️ Arrêt demandé par l'utilisateur")
+                break
+            
             builtins.scraping_status = {"running": True, "progress": f"🏢 Scraping {company} ({i}/{len(companies)})..."}
+            if self.status_callback:
+                self.status_callback(company, i, len(companies), len(self.jobs))
+            
             self.logger.info(f"\n[{i}/{len(companies)}] Traitement {company}...")
             self.scrape_generic(url, company, keywords, location, contract_type)
             builtins.scraping_status = {"running": True, "progress": f"✅ {company} terminé - {len(self.jobs)} offres totales"}
@@ -275,7 +284,9 @@ class AdaptiveScraper:
         self.logger.info(f"\n{'='*60}")
         self.logger.info(f"✅ SCRAPING TERMINÉ: {len(self.jobs)} offres totales")
         self.logger.info(f"{'='*60}\n")
-        builtins.scraping_status = {"running": False, "progress": f"✅ {len(self.jobs)} offres trouvées"}
+        
+        stopped = self.stop_flag and self.stop_flag()
+        builtins.scraping_status = {"running": False, "progress": f"⏹️ Arrêté - {len(self.jobs)} offres" if stopped else f"✅ {len(self.jobs)} offres trouvées"}
         return self.jobs
     
     def close(self):

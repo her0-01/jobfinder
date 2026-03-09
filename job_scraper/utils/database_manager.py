@@ -453,6 +453,56 @@ class DatabaseManager:
         
         return [dict(row) for row in cursor.fetchall()]
     
+    def get_user_searches(self, user_id, limit=20):
+        """Récupère l'historique des recherches d'un utilisateur"""
+        cursor = self.conn.cursor(cursor_factory=RealDictCursor) if self.use_postgres else self.conn.cursor()
+        
+        cursor.execute(
+            '''SELECT s.*, COUNT(j.id) as jobs_count
+               FROM job_searches s
+               LEFT JOIN job_offers j ON s.id = j.search_id
+               WHERE s.user_id = %s
+               GROUP BY s.id
+               ORDER BY s.created_at DESC
+               LIMIT %s''' if self.use_postgres
+            else '''SELECT s.*, COUNT(j.id) as jobs_count
+                    FROM job_searches s
+                    LEFT JOIN job_offers j ON s.id = j.search_id
+                    WHERE s.user_id = ?
+                    GROUP BY s.id
+                    ORDER BY s.created_at DESC
+                    LIMIT ?''',
+            (user_id, limit)
+        )
+        
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def get_search_jobs(self, search_id):
+        """Récupère toutes les offres d'une recherche spécifique"""
+        cursor = self.conn.cursor(cursor_factory=RealDictCursor) if self.use_postgres else self.conn.cursor()
+        
+        cursor.execute(
+            '''SELECT * FROM job_offers 
+               WHERE search_id = %s 
+               ORDER BY scraped_at DESC''' if self.use_postgres
+            else '''SELECT * FROM job_offers 
+                    WHERE search_id = ? 
+                    ORDER BY scraped_at DESC''',
+            (search_id,)
+        )
+        
+        jobs = cursor.fetchall()
+        return [{
+            'title': row['title'] if self.use_postgres else row[3],
+            'company': row['company'] if self.use_postgres else row[4],
+            'location': row['location'] if self.use_postgres else row[5],
+            'link': row['url'] if self.use_postgres else row[6],
+            'description': row['description'] if self.use_postgres else row[7],
+            'relevance_score': row['relevance_score'] if self.use_postgres else row[8],
+            'source': row['source_site'] if self.use_postgres else row[9],
+            'scraped_at': row['scraped_at'] if self.use_postgres else row[10]
+        } for row in jobs]
+    
     def close(self):
         """Ferme la connexion à la base de données"""
         if self.conn:

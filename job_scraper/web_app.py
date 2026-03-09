@@ -137,11 +137,14 @@ def manage_config():
         result = user_manager.update_user_config(username, data)
         return jsonify(result)
 
+# Variable globale pour contrôler l'arrêt
+stop_scraping = False
+
 @app.route('/api/scrape', methods=['POST'])
 @require_auth
 def scrape_jobs():
     username = request.username
-    global current_jobs, scraping_status
+    global current_jobs, scraping_status, stop_scraping
     
     data = request.json
     keywords = data.get('keywords', 'Data Engineer')
@@ -149,46 +152,56 @@ def scrape_jobs():
     contract_type = data.get('contract_type', 'Alternance')
     
     def run_scraping():
-        global current_jobs, scraping_status
-        scraping_status = {"running": True, "progress": "Scraping sites d'emploi..."}
+        global current_jobs, scraping_status, stop_scraping
+        stop_scraping = False
+        scraping_status = {"running": True, "progress": "Scraping sites d'emploi...", "can_stop": True}
         
         try:
             # Sauvegarder la recherche en DB
             search_id = None
             user_id = None
             if use_database:
-                # Récupérer user_id depuis username
                 from utils.user_manager import UserManager
                 um = UserManager()
-                result = um.login(username, '')  # Juste pour récupérer user_id
+                result = um.login(username, '')
                 if result.get('user_id'):
                     user_id = result['user_id']
                     search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
             
-            # Scraping sites carrières avec IA Vision
-            adaptive = AdaptiveScraper(headless=True)
+            # Scraping sites carrières
+            if not stop_scraping:
+                scraping_status = {"running": True, "progress": "🏢 Initialisation scraping sites carrières...", "can_stop": True}
+                adaptive = AdaptiveScraper(headless=True)
+                
+                def update_status(company, index, total, jobs_count):
+                    global scraping_status, stop_scraping
+                    if stop_scraping:
+                        return
+                    scraping_status = {"running": True, "progress": f"🏢 {company} ({index}/{total}) • {jobs_count} offres trouvées", "can_stop": True}
+                
+                adaptive.status_callback = update_status
+                adaptive.stop_flag = lambda: stop_scraping
+                corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
+                adaptive.close()
+                current_jobs.extend(corporate_jobs)
             
-            # Hook pour mettre à jour le statut
-            def update_status(company, index, total, jobs_count):
-                global scraping_status
-                scraping_status["running"] = True
-                scraping_status["progress"] = f"🏢 {company} ({index}/{total}) - {jobs_count} offres trouvées"
+            # Scraping sites universels
+            if not stop_scraping:
+                from scrapers.universal_scraper import UniversalJobScraper
+                universal = UniversalJobScraper(headless=True)
+                
+                sites = ['Indeed', 'LinkedIn', 'Welcome to the Jungle', 'APEC', 'Hellowork', 'Meteojob', 'Cadremploi', 'Monster']
+                for i, site in enumerate(sites, 1):
+                    if stop_scraping:
+                        break
+                    scraping_status = {"running": True, "progress": f"🌐 {site} ({i}/{len(sites)}) • {len(current_jobs)} offres trouvées", "can_stop": True}
+                    time.sleep(0.5)  # Laisser l'UI se mettre à jour
+                
+                universal_jobs = universal.scrape_all(keywords, location, contract_type)
+                universal.close()
+                current_jobs.extend(universal_jobs)
             
-            adaptive.status_callback = update_status
-            corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
-            adaptive.close()
-            
-            # Scraping sites d'emploi universels (Indeed, LinkedIn, etc.)
-            scraping_status = {"running": True, "progress": "🌐 Scraping sites d'emploi universels..."}
-            from scrapers.universal_scraper import UniversalJobScraper
-            universal = UniversalJobScraper(headless=True)
-            universal_jobs = universal.scrape_all(keywords, location, contract_type)
-            universal.close()
-            
-            current_jobs.extend(corporate_jobs)
-            current_jobs.extend(universal_jobs)
-            
-            # Dédupliquer
+            # Dédupliquer et sauvegarder
             seen = set()
             unique_jobs = []
             for job in current_jobs:
@@ -196,29 +209,64 @@ def scrape_jobs():
                 if key not in seen:
                     seen.add(key)
                     unique_jobs.append(job)
-                    
-                    # Sauvegarder en DB
                     if use_database and search_id and user_id:
                         db_manager.save_job_offer(search_id, user_id, job)
             
             current_jobs = unique_jobs
             
-            # Sauvegarder en JSON aussi (fallback)
             with open('data/jobs_latest.json', 'w', encoding='utf-8') as f:
                 json.dump(current_jobs, f, ensure_ascii=False, indent=2)
             
-            scraping_status = {"running": False, "progress": f"✓ {len(current_jobs)} offres trouvées"}
+            status_msg = f"⏹️ Arrêté - {len(current_jobs)} offres" if stop_scraping else f"✓ {len(current_jobs)} offres trouvées"
+            scraping_status = {"running": False, "progress": status_msg, "can_stop": False}
         except Exception as e:
-            scraping_status = {"running": False, "progress": f"❌ Erreur: {str(e)}"}
+            scraping_status = {"running": False, "progress": f"❌ Erreur: {str(e)}", "can_stop": False}
     
     thread = threading.Thread(target=run_scraping)
     thread.start()
     
     return jsonify({"status": "started"})
 
+@app.route('/api/scrape/stop', methods=['POST'])
+@require_auth
+def stop_scrape():
+    global stop_scraping
+    stop_scraping = True
+    return jsonify({"status": "stopping"})
+
 @app.route('/api/jobs')
+@require_auth
 def get_jobs():
     return jsonify(current_jobs)
+
+@app.route('/api/searches')
+@require_auth
+def get_searches():
+    username = request.username
+    if not use_database:
+        return jsonify([])
+    
+    # Récupérer user_id
+    from utils.user_manager import UserManager
+    um = UserManager()
+    result = um.login(username, '')
+    if not result.get('user_id'):
+        return jsonify([])
+    
+    user_id = result['user_id']
+    searches = db_manager.get_user_searches(user_id)
+    return jsonify(searches)
+
+@app.route('/api/search/<int:search_id>/jobs')
+@require_auth
+def get_search_jobs(search_id):
+    global current_jobs
+    if not use_database:
+        return jsonify([])
+    
+    jobs = db_manager.get_search_jobs(search_id)
+    current_jobs = jobs  # Charger dans la session
+    return jsonify(jobs)
 
 @app.route('/api/status')
 def get_status():
