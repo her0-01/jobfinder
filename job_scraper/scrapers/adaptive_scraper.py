@@ -85,21 +85,28 @@ class AdaptiveScraper:
         self.jobs = []
     
     def scrape_generic(self, url, company_name, keywords, location="France", contract_type="Alternance"):
-        """Scraping générique avec SOTA Scraper"""
+        """Scraping générique avec IA Smart Query Builder"""
         self.logger.info(f"\n{'='*60}")
-        self.logger.info(f"🏢 Scraping {company_name} (SOTA)")
+        self.logger.info(f"🏢 Scraping {company_name}")
         
         try:
-            from scrapers.sota_scraper import SOTAScraper
-            sota = SOTAScraper(self.driver)
-            jobs = sota.scrape(url, keywords, location)
-            
-            if jobs:
-                self.jobs.extend(jobs[:15])
-                print(f"✅ {company_name}: {len(jobs[:15])} offres (SOTA)")
-                return
-            
-            print(f"⚠️ {company_name}: Aucune offre trouvée")
+            # TOUJOURS utiliser Smart Query Builder si disponible
+            if self.smart_query:
+                self.logger.info(f"🤖 IA SMART QUERY BUILDER pour {company_name}")
+                print(f"  🤖 IA: Optimisation URL pour {company_name}...")
+                self._scrape_classic(url, company_name, keywords, location, contract_type)
+            else:
+                # Fallback SOTA si pas d'IA
+                self.logger.info(f"🔍 Fallback SOTA pour {company_name}")
+                from scrapers.sota_scraper import SOTAScraper
+                sota = SOTAScraper(self.driver)
+                jobs = sota.scrape(url, keywords, location)
+                
+                if jobs:
+                    self.jobs.extend(jobs[:15])
+                    print(f"✅ {company_name}: {len(jobs[:15])} offres (SOTA)")
+                else:
+                    print(f"⚠️ {company_name}: Aucune offre trouvée")
             
         except Exception as e:
             self.logger.error(f"❌ Erreur {company_name}: {str(e)}")
