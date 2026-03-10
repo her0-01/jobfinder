@@ -241,25 +241,25 @@ class AdaptiveScraper:
                         continue
                 
                 matched_links += 1
-                    
-                    # Construire URL complète proprement
-                    if href.startswith('http'):
-                        full_url = href
-                    else:
-                        # Extraire domaine de base sans paramètres
-                        from urllib.parse import urlparse
-                        parsed = urlparse(url)
-                        base_url = f"{parsed.scheme}://{parsed.netloc}"
-                        full_url = base_url + href if href.startswith('/') else f"{base_url}/{href}"
-                    
-                    job_links.append({
-                        'title': link.get_text().strip(),
-                        'company': company_name,
-                        'location': self._extract_location(link.parent.get_text() if link.parent else ''),
-                        'link': full_url,
-                        'source': f'{company_name} Careers',
-                        'scraped_at': datetime.now().isoformat()
-                    })
+                
+                # Construire URL complète proprement
+                if href.startswith('http'):
+                    full_url = href
+                else:
+                    # Extraire domaine de base sans paramètres
+                    from urllib.parse import urlparse
+                    parsed = urlparse(url)
+                    base_url = f"{parsed.scheme}://{parsed.netloc}"
+                    full_url = base_url + href if href.startswith('/') else f"{base_url}/{href}"
+                
+                job_links.append({
+                    'title': link.get_text().strip(),
+                    'company': company_name,
+                    'location': self._extract_location(link.parent.get_text() if link.parent else ''),
+                    'link': full_url,
+                    'source': f'{company_name} Careers',
+                    'scraped_at': datetime.now().isoformat()
+                })
             
             self.logger.info(f"🔍 {matched_links} liens matchés avec keywords")
             
