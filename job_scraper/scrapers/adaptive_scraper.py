@@ -187,9 +187,38 @@ class AdaptiveScraper:
             self.logger.debug("Parsing HTML avec BeautifulSoup...")
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             
-            # Chercher tous les liens
-            all_links = soup.find_all('a', href=True)
-            self.logger.info(f"📊 {len(all_links)} liens trouvés sur la page")
+            # NOUVEAU: Chercher d'abord les conteneurs de résultats de recherche
+            # Ces sélecteurs ciblent les LISTES d'offres, pas les liens isolés
+            result_containers = []
+            result_selectors = [
+                'div[class*="search-result"]',
+                'div[class*="job-list"]',
+                'ul[class*="job"]',
+                'div[class*="result"]',
+                'section[class*="job"]',
+                'div[id*="search"]',
+                'div[id*="result"]',
+                'main',  # Contenu principal
+                'article'
+            ]
+            
+            for selector in result_selectors:
+                containers = soup.select(selector)
+                if containers:
+                    result_containers.extend(containers)
+                    self.logger.info(f"✓ Conteneur trouvé: {selector} ({len(containers)} éléments)")
+            
+            # Si aucun conteneur spécifique, utiliser le body mais avec filtrage strict
+            if not result_containers:
+                result_containers = [soup.find('body')]
+                self.logger.warning("⚠️ Aucun conteneur spécifique - utilisation body avec filtrage strict")
+            
+            # Chercher les liens UNIQUEMENT dans les conteneurs de résultats
+            all_links = []
+            for container in result_containers:
+                all_links.extend(container.find_all('a', href=True))
+            
+            self.logger.info(f"📊 {len(all_links)} liens trouvés dans les conteneurs de résultats")
             
             job_links = []
             keywords_lower = keywords.lower().split()
@@ -221,24 +250,19 @@ class AdaptiveScraper:
                 if not any(pattern in href.lower() for pattern in job_patterns):
                     continue
                 
-                # MATCHING STRICT: Vérifier pertinence réelle
-                # Si recherche contient plusieurs mots (ex: "Data Engineer"), au moins 1 doit matcher
-                # Sinon, accepter les mots-clés tech génériques
+                # MATCHING MODERNE: Laisser passer plus d'offres, l'IA filtrera après
+                # On vérifie juste que c'est pas complètement hors sujet
                 
-                has_keyword_match = any(kw in text for kw in keywords_lower)
+                # Mots à exclure absolument (non-tech)
+                excluded_keywords = ['commercial', 'vente', 'sales', 'marketing', 'rh', 'hr', 
+                                    'comptable', 'juridique', 'legal', 'achat', 'procurement',
+                                    'logistique', 'supply chain', 'maintenance', 'production']
                 
-                # Si la recherche est spécifique (2+ mots), exiger au moins 1 match
-                if len(keywords_lower) >= 2:
-                    if not has_keyword_match:
-                        continue
-                else:
-                    # Recherche générique: accepter tech keywords
-                    tech_keywords = ['data', 'engineer', 'scientist', 'analyst', 'developer', 'développeur', 
-                                    'ingénieur', 'alternance', 'stage', 'apprenti', 'python', 'machine learning',
-                                    'big data', 'cloud', 'devops', 'fullstack', 'backend', 'frontend']
-                    
-                    if not (has_keyword_match or any(tech in text for tech in tech_keywords)):
-                        continue
+                # Si contient un mot exclu, skip
+                if any(excl in text for excl in excluded_keywords):
+                    continue
+                
+                # Sinon, on laisse passer et l'IA décidera
                 
                 matched_links += 1
                 
@@ -272,10 +296,18 @@ class AdaptiveScraper:
                     seen_titles.add(job['title'])
                     unique_jobs.append(job)
             
-            self.logger.info(f"📋 {len(unique_jobs)} offres uniques (avant limite)")
-            self.jobs.extend(unique_jobs[:10])
-            self.logger.info(f"✅ {company_name}: {len(unique_jobs[:10])} offres ajoutées")
-            print(f"✓ {company_name}: {len(unique_jobs[:10])} offres")
+            self.logger.info(f"📋 {len(unique_jobs)} offres uniques (avant filtre IA)")
+            
+            # FILTRE IA: Scorer et garder seulement les offres pertinentes
+            if self.smart_query and len(unique_jobs) > 0:
+                filtered_jobs = self._ai_filter_jobs(unique_jobs, keywords)
+                self.jobs.extend(filtered_jobs[:10])
+                self.logger.info(f"✅ {company_name}: {len(filtered_jobs[:10])} offres (après filtre IA)")
+                print(f"✓ {company_name}: {len(filtered_jobs[:10])} offres pertinentes")
+            else:
+                self.jobs.extend(unique_jobs[:10])
+                self.logger.info(f"✅ {company_name}: {len(unique_jobs[:10])} offres ajoutées")
+                print(f"✓ {company_name}: {len(unique_jobs[:10])} offres")
             
         except Exception as e:
             self.logger.error(f"❌ Erreur {company_name}: {str(e)}")
@@ -292,6 +324,55 @@ class AdaptiveScraper:
                 return loc
         
         return 'France'
+    
+    def _ai_filter_jobs(self, jobs, keywords):
+        """Filtre IA: garde seulement les offres pertinentes"""
+        if not jobs:
+            return []
+        
+        try:
+            # Préparer la liste des titres
+            titles = [f"{i+1}. {job['title']}" for i, job in enumerate(jobs)]
+            titles_text = "\n".join(titles[:30])  # Max 30 pour pas exploser les tokens
+            
+            prompt = f"""Recherche: {keywords}
+
+Offres trouvées:
+{titles_text}
+
+Quelles offres sont pertinentes pour "{keywords}" ?
+Réponds UNIQUEMENT avec les numéros séparés par des virgules.
+Exemple: 1,3,5,7
+
+Si aucune n'est pertinente, réponds: aucune"""
+            
+            response = self.smart_query.ai.chat_completion_with_fallback(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+                max_tokens=100
+            )
+            
+            # Parser la réponse
+            response = response.strip().lower()
+            
+            if 'aucune' in response:
+                self.logger.info("⚠️ IA: Aucune offre pertinente")
+                return []
+            
+            # Extraire les numéros
+            import re
+            numbers = re.findall(r'\d+', response)
+            relevant_indices = [int(n) - 1 for n in numbers if int(n) <= len(jobs)]
+            
+            filtered = [jobs[i] for i in relevant_indices if 0 <= i < len(jobs)]
+            self.logger.info(f"✅ IA: {len(filtered)}/{len(jobs)} offres pertinentes")
+            
+            return filtered
+            
+        except Exception as e:
+            self.logger.warning(f"⚠️ Filtre IA échoué: {e}")
+            # Fallback: garder toutes les offres
+            return jobs
     
     def scrape_all_companies(self, keywords="Data Engineer", location="France", contract_type="Alternance"):
         """Scraper toutes les entreprises avec Smart Query Builder"""

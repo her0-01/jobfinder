@@ -226,7 +226,7 @@ class UniversalJobScraper:
             self.logger.warning(f"⚠️ Indeed erreur (skip): {e}")
             print(f"⚠ Indeed: Erreur - passage aux autres sites")
     
-    def scrape_linkedin(self, keywords, location):
+    def scrape_linkedin(self, keywords, location, contract_type="Alternance"):
         self.logger.info(f"\n{'='*60}")
         self.logger.info("🔍 Scraping LinkedIn")
         try:
