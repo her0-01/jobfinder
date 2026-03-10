@@ -112,6 +112,23 @@
             </div>
         </div>
 
+        <!-- CV et Lettre de Motivation -->
+        <div class="config-card">
+            <h3 class="section-title"><i class="fas fa-file-alt"></i> CV et Lettre de Motivation</h3>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-bold">CV (Markdown ou Texte)</label>
+                    <textarea class="form-control" id="cvContent" rows="10" placeholder="# Votre Nom\n\n## Formation\n- BUT Science des Données\n\n## Compétences\n- Python, SQL, Machine Learning\n\n## Expérience\n..."></textarea>
+                    <small class="text-muted">Utilisez le format Markdown pour un meilleur rendu</small>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold">Lettre de Motivation (Template)</label>
+                    <textarea class="form-control" id="coverLetterTemplate" rows="8" placeholder="Madame, Monsieur,\n\nActuellement en [formation], je suis à la recherche d'une alternance en tant que [poste].\n\nMon parcours académique et mes compétences en [compétences] me permettent de...\n\nCordialement"></textarea>
+                    <small class="text-muted">Ce template sera personnalisé par l'IA pour chaque offre</small>
+                </div>
+            </div>
+        </div>
+
         <!-- Paramètres Scraping -->
         <div class="config-card">
             <h3 class="section-title"><i class="fas fa-search"></i> Paramètres Scraping</h3>
@@ -234,6 +251,10 @@
                 document.getElementById('specialisation').value = config.background?.specialisation || '';
                 document.getElementById('competencesCles').value = config.background?.competences_cles || '';
                 
+                // CV et Lettre
+                document.getElementById('cvContent').value = config.cv_content || '';
+                document.getElementById('coverLetterTemplate').value = config.cover_letter_template || '';
+                
                 // Scraping
                 document.getElementById('defaultKeywords').value = config.scraping?.keywords || 'Data Engineer';
                 document.getElementById('defaultLocation').value = config.scraping?.location || 'France';
@@ -253,6 +274,8 @@
             const config = {
                 ai_provider: currentProvider,
                 api_keys: apiKeys,
+                cv_content: document.getElementById('cvContent').value,
+                cover_letter_template: document.getElementById('coverLetterTemplate').value,
                 profile: {
                     name: document.getElementById('fullName').value,
                     email: document.getElementById('email').value,

@@ -547,8 +547,10 @@
                 document.getElementById('history-tab').style.display = 'none';
                 document.getElementById('applications-tab').style.display = 'none';
                 document.getElementById('stats-tab').style.display = 'none';
+                document.getElementById('tracking-tab').style.display = 'none';
+                document.getElementById('alerts-tab').style.display = 'none';
                 
-                // Afficher directement sans recalculer les scores
+                // Afficher avec les scores déjà calculés (pas de recalcul)
                 displayJobs();
             } catch (error) {
                 console.error('Error loading jobs:', error);
@@ -560,7 +562,7 @@
             const response = await fetch('/api/jobs');
             currentJobs = await response.json();
             
-            // Calculer scores de pertinence avec IA
+            // Calculer scores de pertinence avec IA (l'IA va filtrer intelligemment)
             await calculateRelevanceScores();
             
             displayJobs();
@@ -569,10 +571,15 @@
         async function calculateRelevanceScores() {
             console.log('Calcul des scores de pertinence...');
             
+            const keywords = document.getElementById('keywords').value;
+            
             const response = await fetch('/api/calculate-relevance', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({jobs: currentJobs})
+                body: JSON.stringify({
+                    jobs: currentJobs,
+                    keywords: keywords  // Envoyer les mots-clés de recherche
+                })
             });
             
             const scored = await response.json();

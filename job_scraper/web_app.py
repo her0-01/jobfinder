@@ -254,9 +254,6 @@ def scrape_jobs():
             with open('data/jobs_latest.json', 'w', encoding='utf-8') as f:
                 json.dump(current_jobs, f, ensure_ascii=False, indent=2)
             logger.info(f"💾 Fichier JSON sauvegardé: {len(current_jobs)} offres")
-            
-            status_msg = f"⏹️ Arrêté - {len(current_jobs)} offres" if stop_event.is_set() else f"✓ {len(current_jobs)} offres trouvées"
-            scraping_status = {"running": False, "progress": status_msg, "can_stop": False}
         except Exception as e:
             scraping_status = {"running": False, "progress": f"❌ Erreur: {str(e)}", "can_stop": False}
     
@@ -444,11 +441,11 @@ def calculate_relevance():
     username = request.username
     data = request.json
     jobs = data.get('jobs', [])
+    search_keywords = data.get('keywords', '')  # Mots-clés de recherche
     
     # Récupérer config utilisateur depuis DB
     user_config = user_manager.get_user_config(username)
     if not user_config:
-        # Scores par défaut si pas de config
         for job in jobs:
             job['relevance_score'] = 50
         return jsonify({'jobs': jobs})
@@ -459,7 +456,6 @@ def calculate_relevance():
     api_key = api_keys.get(ai_provider) or api_keys.get('groq') or api_keys.get('gemini')
     
     if not api_key:
-        # Pas de clé API, scores par défaut
         for job in jobs:
             job['relevance_score'] = 50
         return jsonify({'jobs': jobs})
@@ -469,8 +465,9 @@ def calculate_relevance():
         profile = user_config.get('profile', {})
         background = user_config.get('background', {})
         
-        # Créer profil candidat pour comparaison
-        candidate_profile = "FORMATION: {} -> {}\nSPÉCIALISATION: {}\nCOMPÉTENCES: {}\nPROJETS: {}\nMOTIVATION: {}\nOBJECTIFS: {}".format(
+        # Créer profil candidat
+        candidate_profile = "RECHERCHE: {}\nFORMATION: {} -> {}\nSPÉCIALISATION: {}\nCOMPÉTENCES: {}\nPROJETS: {}\nMOTIVATION: {}\nOBJECTIFS: {}".format(
+            search_keywords,
             background.get('formation_actuelle', ''),
             background.get('formation_visee', ''),
             background.get('specialisation', ''),
@@ -483,8 +480,7 @@ def calculate_relevance():
         # Calculer score pour chaque offre
         for job in jobs:
             try:
-                # Utiliser IA pour scorer
-                prompt = f"""Analyse la pertinence de cette offre pour ce candidat. Note de 0 à 100.
+                prompt = f"""Analyse la pertinence de cette offre pour ce candidat qui recherche "{search_keywords}". Note de 0 à 100.
 
 CANDIDAT:
 {candidate_profile}
@@ -493,6 +489,13 @@ OFFRE:
 Titre: {job['title']}
 Entreprise: {job['company']}
 Source: {job['source']}
+
+CRITÈRES STRICTS:
+- Si le titre de l'offre ne correspond PAS du tout à la recherche: 0-30
+- Si le titre est vaguement lié: 30-50
+- Si le titre est dans le même domaine: 50-70
+- Si le titre correspond bien: 70-85
+- Si le titre correspond parfaitement: 85-100
 
 Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                 
@@ -503,7 +506,6 @@ Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                     max_tokens=10
                 )
                 
-                # Extraire le score
                 import re
                 numbers = re.findall(r'\d+', score_text)
                 score = int(numbers[0]) if numbers else 50
@@ -515,7 +517,6 @@ Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                 job['relevance_score'] = 50
     
     except Exception as e:
-        # Erreur globale, scores par défaut
         for job in jobs:
             job['relevance_score'] = 50
     

@@ -221,13 +221,26 @@ class AdaptiveScraper:
                 if not any(pattern in href.lower() for pattern in job_patterns):
                     continue
                 
-                # MATCHING FLEXIBLE: au moins 1 keyword OU mots-clés métier
-                tech_keywords = ['data', 'engineer', 'scientist', 'analyst', 'developer', 'développeur', 
-                                'ingénieur', 'alternance', 'stage', 'apprenti', 'python', 'machine learning',
-                                'big data', 'cloud', 'devops', 'fullstack', 'backend', 'frontend']
+                # MATCHING STRICT: Vérifier pertinence réelle
+                # Si recherche contient plusieurs mots (ex: "Data Engineer"), au moins 1 doit matcher
+                # Sinon, accepter les mots-clés tech génériques
                 
-                if any(kw in text for kw in keywords_lower) or any(tech in text for tech in tech_keywords):
-                    matched_links += 1
+                has_keyword_match = any(kw in text for kw in keywords_lower)
+                
+                # Si la recherche est spécifique (2+ mots), exiger au moins 1 match
+                if len(keywords_lower) >= 2:
+                    if not has_keyword_match:
+                        continue
+                else:
+                    # Recherche générique: accepter tech keywords
+                    tech_keywords = ['data', 'engineer', 'scientist', 'analyst', 'developer', 'développeur', 
+                                    'ingénieur', 'alternance', 'stage', 'apprenti', 'python', 'machine learning',
+                                    'big data', 'cloud', 'devops', 'fullstack', 'backend', 'frontend']
+                    
+                    if not (has_keyword_match or any(tech in text for tech in tech_keywords)):
+                        continue
+                
+                matched_links += 1
                     
                     # Construire URL complète proprement
                     if href.startswith('http'):

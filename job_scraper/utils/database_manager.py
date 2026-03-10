@@ -509,6 +509,7 @@ class DatabaseManager:
         
         # Support 'link' ou 'url'
         url = offer_data.get('link') or offer_data.get('url')
+        relevance_score = offer_data.get('relevance_score', 50)
         
         cursor.execute(
             '''INSERT INTO job_offers 
@@ -519,7 +520,7 @@ class DatabaseManager:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (search_id, user_id, offer_data.get('title'), offer_data.get('company'),
              offer_data.get('location'), url, offer_data.get('description'),
-             offer_data.get('relevance_score'), offer_data.get('source'))
+             relevance_score, offer_data.get('source'))
         )
         self.conn.commit()
         
