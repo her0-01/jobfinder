@@ -86,6 +86,8 @@ class DatabaseManager:
                 portfolio_url TEXT,
                 profile_data TEXT,
                 background_data TEXT,
+                cv_content TEXT,
+                cover_letter_template TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id)
             )
@@ -98,6 +100,8 @@ class DatabaseManager:
                 portfolio_url TEXT,
                 profile_data TEXT,
                 background_data TEXT,
+                cv_content TEXT,
+                cover_letter_template TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             )
@@ -429,17 +433,23 @@ class DatabaseManager:
             cursor.execute(
                 '''UPDATE user_configs SET 
                    ai_provider = %s, github_url = %s, portfolio_url = %s,
-                   profile_data = %s, background_data = %s, updated_at = CURRENT_TIMESTAMP
+                   profile_data = %s, background_data = %s, 
+                   cv_content = %s, cover_letter_template = %s,
+                   updated_at = CURRENT_TIMESTAMP
                    WHERE user_id = %s''' if self.use_postgres
                 else '''UPDATE user_configs SET 
                         ai_provider = ?, github_url = ?, portfolio_url = ?,
-                        profile_data = ?, background_data = ?, updated_at = CURRENT_TIMESTAMP
+                        profile_data = ?, background_data = ?,
+                        cv_content = ?, cover_letter_template = ?,
+                        updated_at = CURRENT_TIMESTAMP
                         WHERE user_id = ?''',
                 (config.get('ai_provider', 'groq'),
                  config.get('github_url'),
                  config.get('portfolio_url'),
                  json.dumps(config.get('profile', {})),
                  json.dumps(config.get('background', {})),
+                 config.get('cv_content'),
+                 config.get('cover_letter_template'),
                  user_id)
             )
             self.conn.commit()
@@ -465,7 +475,9 @@ class DatabaseManager:
                 'github_url': config[3],
                 'portfolio_url': config[4],
                 'profile_data': config[5],
-                'background_data': config[6]
+                'background_data': config[6],
+                'cv_content': config[7] if len(config) > 7 else None,
+                'cover_letter_template': config[8] if len(config) > 8 else None
             }
             
             # Parser les JSON

@@ -1064,27 +1064,34 @@
             
             try {
                 // Skill gap analysis
-                const skillGap = await fetch('/api/matcher/skill-gap', {
+                const skillGapRes = await fetch('/api/matcher/skill-gap', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         cv: 'Mon CV',
                         job_description: job.title + ' ' + job.company
                     })
-                }).then(r => r.json());
+                });
+                
+                if (!skillGapRes.ok) {
+                    throw new Error('Erreur API - Vérifiez votre clé API dans Configuration');
+                }
+                
+                const skillGap = await skillGapRes.json();
                 
                 // Red flags
-                const redFlags = await fetch('/api/matcher/red-flags', {
+                const redFlagsRes = await fetch('/api/matcher/red-flags', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         job_description: job.title,
                         company: job.company
                     })
-                }).then(r => r.json());
+                });
+                const redFlags = await redFlagsRes.json();
                 
                 // Salary estimate
-                const salary = await fetch('/api/matcher/salary-estimate', {
+                const salaryRes = await fetch('/api/matcher/salary-estimate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -1092,7 +1099,8 @@
                         location: job.location,
                         experience_years: 2
                     })
-                }).then(r => r.json());
+                });
+                const salary = await salaryRes.json();
                 
                 modalBody.innerHTML = `
                     <h2>🔍 Analyse Complète - ${job.title}</h2>
@@ -1100,23 +1108,33 @@
                     
                     <div class="ai-insight" style="margin: 20px 0;">
                         <h3>📊 Analyse des Compétences</h3>
-                        <pre style="white-space: pre-wrap;">${skillGap.analysis}</pre>
+                        <pre style="white-space: pre-wrap;">${skillGap.analysis || 'Non disponible'}</pre>
                     </div>
                     
                     <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ffc107;">
                         <h3>🚩 Red Flags & Points de Vigilance</h3>
-                        <pre style="white-space: pre-wrap;">${redFlags.analysis}</pre>
+                        <pre style="white-space: pre-wrap;">${redFlags.analysis || 'Non disponible'}</pre>
                     </div>
                     
                     <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); border-left: 4px solid #28a745;">
                         <h3>💰 Estimation Salariale</h3>
-                        <pre style="white-space: pre-wrap;">${salary.salary_info}</pre>
+                        <pre style="white-space: pre-wrap;">${salary.salary_info || 'Non disponible'}</pre>
                     </div>
                     
                     <button class="btn btn-primary" onclick="closeModal()">Fermer</button>
                 `;
             } catch (error) {
-                modalBody.innerHTML = `<p>❌ Erreur: ${error.message}</p><p>Vérifiez que votre clé API est configurée.</p>`;
+                modalBody.innerHTML = `
+                    <h2>❌ Erreur</h2>
+                    <p>${error.message}</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Vérifiez que votre clé API est configurée dans <a href="/config">Configuration</a></li>
+                        <li>Assurez-vous d'avoir une clé Groq ou Gemini valide</li>
+                        <li>Rechargez la page et réessayez</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="closeModal()">Fermer</button>
+                `;
             }
         }
         
@@ -1129,7 +1147,7 @@
             
             try {
                 // Questions probables
-                const questions = await fetch('/api/interview/questions', {
+                const questionsRes = await fetch('/api/interview/questions', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -1137,34 +1155,43 @@
                         company: job.company,
                         job_description: ''
                     })
-                }).then(r => r.json());
+                });
+                
+                if (!questionsRes.ok) {
+                    throw new Error('Erreur API - Vérifiez votre clé API dans Configuration');
+                }
+                
+                const questions = await questionsRes.json();
                 
                 // Analyse entreprise
-                const companyAnalysis = await fetch('/api/interview/company-analysis', {
+                const companyRes = await fetch('/api/interview/company-analysis', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({company: job.company})
-                }).then(r => r.json());
+                });
+                const companyAnalysis = await companyRes.json();
                 
                 // Questions à poser
-                const questionsToAsk = await fetch('/api/interview/questions-to-ask', {
+                const questionsToAskRes = await fetch('/api/interview/questions-to-ask', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         job_title: job.title,
                         company: job.company
                     })
-                }).then(r => r.json());
+                });
+                const questionsToAsk = await questionsToAskRes.json();
                 
                 // Elevator pitch
-                const pitch = await fetch('/api/interview/elevator-pitch', {
+                const pitchRes = await fetch('/api/interview/elevator-pitch', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         user_profile: 'Candidat motivé',
                         job_title: job.title
                     })
-                }).then(r => r.json());
+                });
+                const pitch = await pitchRes.json();
                 
                 modalBody.innerHTML = `
                     <h2>🎤 Préparation Entretien - ${job.title}</h2>
@@ -1172,32 +1199,42 @@
                     
                     <div class="ai-insight" style="margin: 20px 0;">
                         <h3>🏢 Analyse de l'Entreprise</h3>
-                        <pre style="white-space: pre-wrap;">${companyAnalysis.analysis}</pre>
+                        <pre style="white-space: pre-wrap;">${companyAnalysis.analysis || 'Non disponible'}</pre>
                     </div>
                     
                     <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);">
                         <h3>❓ Questions Probables (Préparez vos réponses)</h3>
                         <ol style="margin-left: 20px;">
-                            ${questions.questions.filter(q => q.trim()).map(q => `<li style="margin: 10px 0;">${q}</li>`).join('')}
+                            ${(questions.questions || []).filter(q => q.trim()).map(q => `<li style="margin: 10px 0;">${q}</li>`).join('')}
                         </ol>
                     </div>
                     
                     <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ffc107;">
                         <h3>💡 Questions à Poser au Recruteur</h3>
                         <ol style="margin-left: 20px;">
-                            ${questionsToAsk.questions.filter(q => q.trim()).map(q => `<li style="margin: 10px 0;">${q}</li>`).join('')}
+                            ${(questionsToAsk.questions || []).filter(q => q.trim()).map(q => `<li style="margin: 10px 0;">${q}</li>`).join('')}
                         </ol>
                     </div>
                     
                     <div class="ai-insight" style="margin: 20px 0; background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%); border-left: 4px solid #e91e63;">
                         <h3>🎯 Votre Elevator Pitch (30 secondes)</h3>
-                        <pre style="white-space: pre-wrap; font-size: 1.1em;">${pitch.pitch}</pre>
+                        <pre style="white-space: pre-wrap; font-size: 1.1em;">${pitch.pitch || 'Non disponible'}</pre>
                     </div>
                     
                     <button class="btn btn-primary" onclick="closeModal()">Fermer</button>
                 `;
             } catch (error) {
-                modalBody.innerHTML = `<p>❌ Erreur: ${error.message}</p><p>Vérifiez que votre clé API est configurée.</p>`;
+                modalBody.innerHTML = `
+                    <h2>❌ Erreur</h2>
+                    <p>${error.message}</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Vérifiez que votre clé API est configurée dans <a href="/config">Configuration</a></li>
+                        <li>Assurez-vous d'avoir une clé Groq ou Gemini valide</li>
+                        <li>Rechargez la page et réessayez</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="closeModal()">Fermer</button>
+                `;
             }
         }
     </script>

@@ -309,7 +309,9 @@ def get_status():
     return jsonify(scraping_status)
 
 @app.route('/api/generate', methods=['POST'])
+@require_auth
 def generate_application():
+    username = request.username
     data = request.json
     job_index = data.get('job_index')
     
@@ -318,95 +320,77 @@ def generate_application():
     
     job = current_jobs[job_index]
     
-    # Charger config
-    config = load_config()
-    groq = GroqMultiAgentAdapter(config['API']['groq_api_key'])
-    profile = dict(config['PROFILE'])
-    background = dict(config['BACKGROUND']) if 'BACKGROUND' in config else {}
+    # Récupérer config utilisateur
+    user_config = user_manager.get_user_config(username)
+    if not user_config:
+        return jsonify({"error": "Configuration utilisateur manquante"}), 400
     
-    # Analyser GitHub et Portfolio
-    print("  🔍 Analyse GitHub et Portfolio...")
-    analyzer = ProfileAnalyzer(profile['github'], profile['portfolio'])
-    profile_data = analyzer.get_full_profile()
-    profile['analysis'] = profile_data.get('combined_summary', '')
+    # Récupérer clé API
+    api_keys = user_config.get('api_keys', {})
+    api_key = api_keys.get('groq') or api_keys.get('gemini') or api_keys.get('openai')
     
-    # Charger CV
-    cv_path = config['CV_PATH'].get('base_cv', 'data/cv_base.tex')
-    with open(cv_path, 'r', encoding='utf-8') as f:
-        cv_content = f.read()
+    if not api_key:
+        return jsonify({"error": "Clé API manquante. Configurez-la dans Configuration."}), 400
     
-    if cv_path.endswith('.tex'):
-        cv_text = LaTeXParser.extract_text(cv_content)
-    else:
-        cv_text = cv_content
+    # Récupérer CV et lettre depuis la BD
+    cv_content = user_config.get('cv_content')
+    letter_base = user_config.get('cover_letter_template')
     
-    # Charger lettre de base
-    letter_path = config['CV_PATH'].get('base_cover_letter', 'data/lettre_motivation_base.txt')
-    with open(letter_path, 'r', encoding='utf-8') as f:
-        letter_base = f.read()
+    if not cv_content:
+        return jsonify({"error": "CV manquant. Ajoutez votre CV dans Configuration."}), 400
     
-    # Récupérer détails offre
-    scraper = UniversalJobScraper(headless=True)
-    job['description'] = scraper.get_job_details(job['link'])
-    scraper.close()
+    if not letter_base:
+        letter_base = "Je suis très intéressé(e) par ce poste."
     
-    # Analyser compatibilité
-    match = groq.analyze_job_match(cv_text, job['description'])
-    
-    # Générer CV adapté
-    adapted_cv = groq.generate_cv_adaptation(cv_text, job['description'], profile, background)
-    
-    # Sauvegarder en LaTeX si le CV de base est en LaTeX
-    if cv_path.endswith('.tex'):
-        # Nettoyer le code LaTeX généré (enlever les balises markdown si présentes)
-        adapted_cv = adapted_cv.replace('```latex', '').replace('```', '').strip()
-        cv_filename = 'cv_adapted.tex'
-    else:
-        cv_filename = 'cv_adapted.md'
-    
-    # Générer lettre
-    cover_letter = groq.generate_cover_letter_from_base(job, profile, adapted_cv, letter_base, background)
-    
-    # Sauvegarder
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    company_clean = job['company'].replace(' ', '_')[:30]
-    folder = Path(f'data/applications/{timestamp}_{company_clean}')
-    folder.mkdir(parents=True, exist_ok=True)
-    
-    # Sauvegarder Markdown ou LaTeX
-    with open(folder / cv_filename, 'w', encoding='utf-8') as f:
-        f.write(adapted_cv)
-    
-    with open(folder / 'cover_letter.txt', 'w', encoding='utf-8') as f:
-        f.write(cover_letter)
-    
-    # Générer PDFs
-    print("  📄 Génération des PDFs...")
-    pdf_gen = PDFGenerator()
-    
-    # Si LaTeX, compiler directement, sinon convertir depuis Markdown
-    if cv_path.endswith('.tex'):
-        cv_pdf = pdf_gen.compile_latex_to_pdf(adapted_cv, str(folder / 'cv_adapted.pdf'))
-    else:
+    try:
+        groq = GroqMultiAgentAdapter(api_key)
+        profile = user_config.get('profile', {})
+        background = user_config.get('background', {})
+        
+        # Analyser compatibilité
+        match = groq.analyze_job_match(cv_content, job.get('description', job['title']))
+        
+        # Générer CV adapté
+        adapted_cv = groq.generate_cv_adaptation(cv_content, job.get('description', job['title']), profile, background)
+        
+        # Générer lettre
+        cover_letter = groq.generate_cover_letter_from_base(job, profile, adapted_cv, letter_base, background)
+        
+        # Sauvegarder
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        company_clean = job['company'].replace(' ', '_')[:30]
+        folder = Path(f'data/applications/{timestamp}_{company_clean}')
+        folder.mkdir(parents=True, exist_ok=True)
+        
+        with open(folder / 'cv_adapted.md', 'w', encoding='utf-8') as f:
+            f.write(adapted_cv)
+        
+        with open(folder / 'cover_letter.txt', 'w', encoding='utf-8') as f:
+            f.write(cover_letter)
+        
+        # Générer PDFs
+        pdf_gen = PDFGenerator()
         cv_pdf = pdf_gen.generate_cv_pdf(adapted_cv, str(folder / 'cv_adapted.pdf'))
+        letter_pdf = pdf_gen.generate_letter_pdf(cover_letter, profile, str(folder / 'cover_letter.pdf'))
+        
+        with open(folder / 'job_info.json', 'w', encoding='utf-8') as f:
+            json.dump({
+                'job': job,
+                'match_analysis': match,
+                'generated_at': datetime.now().isoformat()
+            }, f, ensure_ascii=False, indent=2)
+        
+        return jsonify({
+            "success": True,
+            "folder": str(folder.name),
+            "match_score": match.get('score', 0),
+            "cv": adapted_cv,
+            "letter": cover_letter,
+            "is_latex": False
+        })
     
-    letter_pdf = pdf_gen.generate_letter_pdf(cover_letter, profile, str(folder / 'cover_letter.pdf'))
-    
-    with open(folder / 'job_info.json', 'w', encoding='utf-8') as f:
-        json.dump({
-            'job': job,
-            'match_analysis': match,
-            'generated_at': datetime.now().isoformat()
-        }, f, ensure_ascii=False, indent=2)
-    
-    return jsonify({
-        "success": True,
-        "folder": str(folder.name),
-        "match_score": match.get('score', 0),
-        "cv": adapted_cv,
-        "letter": cover_letter,
-        "is_latex": cv_path.endswith('.tex')
-    })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/applications')
 def list_applications():
@@ -645,14 +629,6 @@ def download_pdf(folder_name, doc_type):
         return jsonify({"error": "File not found"}), 404
     
     return send_file(file_path, as_attachment=True)
-
-if __name__ == '__main__':
-    # Démarrer le système d'alertes en arrière-plan
-    alert_system.start_background_checker()
-    
-    port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
-
 
 # Nouvelles routes pour historique et statistiques
 @app.route('/api/history/searches')
@@ -1032,3 +1008,10 @@ def detect_red_flags():
     analysis = matcher.detect_red_flags(data['job_description'], data['company'])
     
     return jsonify({'analysis': analysis})
+
+if __name__ == '__main__':
+    # Démarrer le système d'alertes en arrière-plan
+    alert_system.start_background_checker()
+    
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
