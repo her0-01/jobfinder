@@ -172,6 +172,20 @@ def scrape_jobs():
                 scraping_status = {"running": True, "progress": "🚀 Tentative Playwright...", "can_stop": True}
                 from orchestrator.auto_learning import AutoLearningOrchestrator
                 orchestrator = AutoLearningOrchestrator()
+                
+                # Passer le stop_flag au scraper Playwright
+                orchestrator.scraper.stop_flag = stop_event
+                
+                # Callback pour progression
+                def update_status_playwright(site_name, index, total, jobs_count):
+                    global scraping_status, stop_scraping, current_jobs
+                    if stop_scraping:
+                        stop_event.set()
+                    current_jobs = list(orchestrator.scraper.jobs)
+                    scraping_status = {"running": True, "progress": f"🌐 {site_name} ({index}/{total}) • {len(current_jobs)} offres", "can_stop": True}
+                
+                orchestrator.scraper.status_callback = update_status_playwright
+                
                 jobs = orchestrator.sync_search(keywords, location, contract_type)
                 
                 if len(jobs) > 0:

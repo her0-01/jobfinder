@@ -411,13 +411,13 @@ Si aucune n'est pertinente, réponds: aucune"""
                 self.logger.info("⏹️ Arrêt demandé par l'utilisateur")
                 break
             
-            builtins.scraping_status = {"running": True, "progress": f"🏢 Scraping {company} ({i}/{len(companies)})..."}
+            builtins.scraping_status = {"running": True, "progress": f"🏢 {company} ({i}/15) • {len(self.jobs)} offres"}
             if self.status_callback:
                 self.status_callback(company, i, len(companies), len(self.jobs))
             
             self.logger.info(f"\n[{i}/{len(companies)}] Traitement {company}...")
             self.scrape_generic(url, company, keywords, location, contract_type)
-            builtins.scraping_status = {"running": True, "progress": f"✅ {company} terminé - {len(self.jobs)} offres totales"}
+            builtins.scraping_status = {"running": True, "progress": f"✅ {company} ({i}/15) • {len(self.jobs)} offres"}
             time.sleep(2)
         
         self.logger.info(f"\n{'='*60}")

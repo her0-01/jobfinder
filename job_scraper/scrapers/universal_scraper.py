@@ -100,6 +100,11 @@ class UniversalJobScraper:
                 self.logger.info(f"⏹️ Arrêt demandé - Skip sites restants")
                 break
             
+            # Mettre à jour le statut avec le format (X/8)
+            import builtins
+            if hasattr(builtins, 'scraping_status'):
+                builtins.scraping_status = {"running": True, "progress": f"🌐 {site_name} ({i}/8) • {len(self.jobs)} offres"}
+            
             if self.status_callback:
                 self.status_callback(site_name, i, len(sites), len(self.jobs))
             print(f"\n[{i}/{len(sites)}] 🌐 {site_name}...")
