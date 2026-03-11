@@ -6,15 +6,18 @@ import urllib.parse
 
 async def scrape_wttj_async(keywords, location="France", contract_type=""):
     jobs = []
+    print(f"[WTTJ] Démarrage scraping: '{keywords}' @ '{location}'")
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
         try:
             url = f"https://www.welcometothejungle.com/fr/jobs?query={urllib.parse.quote(keywords)}&aroundQuery={urllib.parse.quote(location)}"
+            print(f"[WTTJ] URL: {url}")
             await page.goto(url, timeout=15000)
             await page.wait_for_timeout(3000)
             
             cards = await page.query_selector_all('li[data-testid="search-results-list-item-wrapper"]')
+            print(f"[WTTJ] {len(cards)} cartes trouvées")
             for card in cards[:30]:
                 try:
                     title_el = await card.query_selector('h2')
@@ -42,9 +45,10 @@ async def scrape_wttj_async(keywords, location="France", contract_type=""):
                 except:
                     continue
         except Exception as e:
-            print(f"WTTJ error: {e}")
+            print(f"[WTTJ] ERREUR: {e}")
         finally:
             await browser.close()
+    print(f"[WTTJ] Retour: {len(jobs)} offres")
     return jobs
 
 async def scrape_apec_async(keywords, location="France", contract_type=""):

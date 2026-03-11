@@ -187,21 +187,21 @@ def scrape_jobs():
             
             if not playwright_success:
                 # FALLBACK: Ancien système Selenium
-                    scraping_status = {"running": True, "progress": "🏢 Scraping sites carrières...", "can_stop": True}
-                    adaptive = AdaptiveScraper(headless=True)
-                    
-                    def update_status(company, index, total, jobs_count):
-                        global scraping_status, stop_scraping, current_jobs
-                        if stop_scraping:
-                            stop_event.set()
-                        current_jobs = list(adaptive.jobs)
-                        scraping_status = {"running": True, "progress": f"🏢 {company} ({index}/15) • {len(current_jobs)} offres", "can_stop": True}
-                    
-                    adaptive.status_callback = update_status
-                    adaptive.stop_flag = stop_event
-                    corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
-                    adaptive.close()
-                    current_jobs = list(corporate_jobs) if corporate_jobs else []
+                scraping_status = {"running": True, "progress": "🏢 Scraping sites carrières...", "can_stop": True}
+                adaptive = AdaptiveScraper(headless=True)
+                
+                def update_status(company, index, total, jobs_count):
+                    global scraping_status, stop_scraping, current_jobs
+                    if stop_scraping:
+                        stop_event.set()
+                    current_jobs = list(adaptive.jobs)
+                    scraping_status = {"running": True, "progress": f"🏢 {company} ({index}/15) • {len(current_jobs)} offres", "can_stop": True}
+                
+                adaptive.status_callback = update_status
+                adaptive.stop_flag = stop_event
+                corporate_jobs = adaptive.scrape_all_companies(keywords, location, contract_type)
+                adaptive.close()
+                current_jobs = list(corporate_jobs) if corporate_jobs else []
                 
                 if not stop_event.is_set():
                     from scrapers.universal_scraper import UniversalJobScraper
