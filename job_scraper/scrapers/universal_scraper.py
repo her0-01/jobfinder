@@ -310,7 +310,7 @@ class UniversalJobScraper:
             self.logger.error(f"❌ Erreur LinkedIn: {e}")
             print(f"✗ LinkedIn: {e}")
     
-    def scrape_welcometothejungle(self, keywords, location):
+    def scrape_welcometothejungle(self, keywords, location, contract_type=""):
         try:
             url = f"https://www.welcometothejungle.com/fr/jobs?query={urllib.parse.quote(keywords)}&aroundQuery={urllib.parse.quote(location)}"
             self.driver.get(url)
@@ -376,7 +376,7 @@ class UniversalJobScraper:
         except Exception as e:
             print(f"✗ WTTJ: {e}")
     
-    def scrape_apec(self, keywords, location):
+    def scrape_apec(self, keywords, location, contract_type=""):
         try:
             url = f"https://www.apec.fr/candidat/recherche-emploi.html/emploi?motsCles={urllib.parse.quote(keywords)}"
             self.driver.get(url)
@@ -450,7 +450,7 @@ class UniversalJobScraper:
         except Exception as e:
             self.logger.warning(f"⚠️ APEC erreur: {e}")
             print(f"⚠ APEC: Erreur - skip")
-    def scrape_hellowork(self, keywords, location):
+    def scrape_hellowork(self, keywords, location, contract_type=""):
         try:
             url = f"https://www.hellowork.com/fr-fr/emplois.html?k={urllib.parse.quote(keywords)}"
             self.driver.get(url)
@@ -522,7 +522,7 @@ class UniversalJobScraper:
             self.logger.warning(f"⚠️ HelloWork erreur: {e}")
 
     
-    def scrape_meteojob(self, keywords, location):
+    def scrape_meteojob(self, keywords, location, contract_type=""):
         try:
             url = f"https://www.meteojob.com/recherche-emploi?keywords={urllib.parse.quote(keywords)}"
             self.driver.get(url)
@@ -578,7 +578,7 @@ class UniversalJobScraper:
         except Exception as e:
             print(f"⚠ Meteojob: Erreur - skip")
             self.logger.warning(f"⚠️ Meteojob erreur: {e}")
-    def scrape_regionsjob(self, keywords, location):
+    def scrape_regionsjob(self, keywords, location, contract_type=""):
         try:
             url = f"https://www.regionsjob.com/emplois/{urllib.parse.quote(keywords)}.html"
             self.driver.get(url)
@@ -635,7 +635,7 @@ class UniversalJobScraper:
             print(f"⚠ RegionsJob: Erreur - skip")
             self.logger.warning(f"⚠️ RegionsJob erreur: {e}")
 
-    def scrape_monster(self, keywords, location):
+    def scrape_monster(self, keywords, location, contract_type=""):
         try:
             url = f"https://www.monster.fr/emplois/recherche/?q={urllib.parse.quote(keywords)}"
             self.driver.get(url)

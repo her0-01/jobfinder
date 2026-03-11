@@ -1,0 +1,16 @@
+{
+  "indeed": {
+    "base": "https://fr.indeed.com/jobs",
+    "params": {
+      "q": "keywords",
+      "l": "location"
+    }
+  },
+  "linkedin": {
+    "base": "https://www.linkedin.com/jobs/search",
+    "params": {
+      "keywords": "keywords",
+      "location": "location"
+    }
+  }
+}

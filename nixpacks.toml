@@ -1,8 +1,13 @@
 [phases.setup]
-aptPkgs = ["chromium", "chromium-driver"]
+nixPkgs = ["python312", "chromium"]
 
 [phases.install]
-cmds = ["pip install -r job_scraper/requirements.txt"]
+cmds = [
+    "pip install -r job_scraper/requirements.txt"
+]
+
+[phases.build]
+cmds = []
 
 [start]
-cmd = "python web_app.py"
+cmd = "cd job_scraper && python web_app.py"
