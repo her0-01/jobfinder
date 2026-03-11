@@ -1,0 +1,38 @@
+{
+  "data_tech": [
+    {"name": "Dataiku", "domain": "dataiku.com", "career_url": "https://www.dataiku.com/careers/"},
+    {"name": "Criteo", "domain": "criteo.com", "career_url": "https://careers.criteo.com/"},
+    {"name": "Doctolib", "domain": "doctolib.fr", "career_url": "https://careers.doctolib.fr/"},
+    {"name": "BlaBlaCar", "domain": "blablacar.com", "career_url": "https://blog.blablacar.com/careers"},
+    {"name": "Deezer", "domain": "deezer.com", "career_url": "https://www.deezer.com/company/jobs"},
+    {"name": "Leboncoin", "domain": "leboncoin.fr", "career_url": "https://careers.leboncoin.fr/"},
+    {"name": "Veepee", "domain": "veepee.com", "career_url": "https://careers.veepee.com/"},
+    {"name": "Contentsquare", "domain": "contentsquare.com", "career_url": "https://contentsquare.com/careers/"},
+    {"name": "Mirakl", "domain": "mirakl.com", "career_url": "https://www.mirakl.com/careers/"},
+    {"name": "Algolia", "domain": "algolia.com", "career_url": "https://www.algolia.com/careers/"}
+  ],
+  "finance": [
+    {"name": "Lydia", "domain": "lydia-app.com", "career_url": "https://lydia-app.com/careers"},
+    {"name": "Qonto", "domain": "qonto.com", "career_url": "https://qonto.com/en/careers"},
+    {"name": "Alan", "domain": "alan.com", "career_url": "https://alan.com/careers"},
+    {"name": "Swile", "domain": "swile.co", "career_url": "https://www.swile.co/fr-fr/careers"}
+  ],
+  "ecommerce": [
+    {"name": "Cdiscount", "domain": "cdiscount.com", "career_url": "https://recrutement.cdiscount.com/"},
+    {"name": "Fnac Darty", "domain": "fnacdarty.com", "career_url": "https://www.fnacdarty.com/recrutement/"},
+    {"name": "Showroomprive", "domain": "showroomprive.com", "career_url": "https://www.showroomprive.com/recrutement.aspx"}
+  ],
+  "consulting": [
+    {"name": "Accenture", "domain": "accenture.com", "career_url": "https://www.accenture.com/fr-fr/careers"},
+    {"name": "Deloitte", "domain": "deloitte.com", "career_url": "https://www2.deloitte.com/fr/fr/pages/carrieres/articles/accueil.html"},
+    {"name": "PwC", "domain": "pwc.fr", "career_url": "https://www.pwc.fr/fr/carrieres.html"},
+    {"name": "EY", "domain": "ey.com", "career_url": "https://www.ey.com/fr_fr/careers"},
+    {"name": "KPMG", "domain": "kpmg.fr", "career_url": "https://home.kpmg/fr/fr/home/carrieres.html"}
+  ],
+  "startup": [
+    {"name": "Back Market", "domain": "backmarket.com", "career_url": "https://www.backmarket.com/en-us/work-with-us"},
+    {"name": "Shift Technology", "domain": "shift-technology.com", "career_url": "https://www.shift-technology.com/careers/"},
+    {"name": "Ledger", "domain": "ledger.com", "career_url": "https://www.ledger.com/careers"},
+    {"name": "Sorare", "domain": "sorare.com", "career_url": "https://sorare.com/careers"}
+  ]
+}

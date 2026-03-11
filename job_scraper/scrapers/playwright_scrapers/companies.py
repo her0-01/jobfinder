@@ -58,21 +58,49 @@ async def scrape_company_async(url, company_name, keywords, location="France"):
             
             keywords_lower = keywords.lower().split()
             excluded = ['voir', 'toutes', 'nos offres', 'postulez', 'maintenant', 'choisir', 
-                       'métier', 'carriere', 'careers', 'rejoindre', 'découvrir']
+                       'métier', 'carriere', 'careers', 'rejoindre', 'découvrir', 'trier',
+                       'alphabétique', 'pertinence', 'page d', 'accueil', 'nos équipes',
+                       'notre culture', 'nos valeurs', 'nos avantages', 'click here',
+                       'africa', 'middle east', 'brasil', 'italiano', 'japanese', 'português',
+                       'français', 'english', 'español', 'deutsch', 'nederlands',
+                       'construction', 'immobilier', 'telecom', 'brands', 'life at',
+                       'different drives', 'emplois enregistrés', 'jobs étudiants',
+                       'offres d\'emploi', 'recherche', 'filtrer', 'affiner']
+            
+            # Mots-clés qui indiquent une vraie offre (titre de poste)
+            job_indicators = ['engineer', 'développeur', 'analyst', 'manager', 'consultant',
+                            'technicien', 'ingénieur', 'chef de projet', 'alternance', 'stage',
+                            'apprenti', 'junior', 'senior', 'lead', 'architect', 'specialist',
+                            'data', 'software', 'web', 'mobile', 'cloud', 'devops', 'product',
+                            'designer', 'ux', 'ui', 'commercial', 'responsable', 'coordinat',
+                            'assistant', 'chargé', 'adjoint', 'directeur', 'superviseur']
             
             candidates = 0
             for link in all_links:
                 text = link.get_text().lower().strip()
                 href = link['href']
                 
+                # Exclure les liens de navigation/menu
                 if any(excl in text for excl in excluded):
                     continue
                 
-                if len(text) < 10 or len(text) > 200:
+                # Vérifier longueur du texte (titre d'offre = 15-120 caractères)
+                if len(text) < 15 or len(text) > 120:
                     continue
                 
-                job_patterns = ['job', 'career', 'offre', 'emploi', 'poste', 'opportunit']
+                # Vérifier que c'est un lien vers une offre
+                job_patterns = ['job', 'career', 'offre', 'emploi', 'poste', 'opportunit', 'vacancy', 'position']
                 if not any(pattern in href.lower() for pattern in job_patterns):
+                    continue
+                
+                # Vérifier que le texte contient des indicateurs d'offre
+                has_job_indicator = any(indicator in text for indicator in job_indicators)
+                if not has_job_indicator:
+                    continue
+                
+                # Vérifier qu'il y a au moins 2 mots (pas juste "Engineer")
+                words = text.split()
+                if len(words) < 2:
                     continue
                 
                 candidates += 1

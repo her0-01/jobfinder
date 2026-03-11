@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 import json
 import os
+import time
 from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent))
@@ -173,6 +174,18 @@ def scrape_jobs():
                 from orchestrator.auto_learning import AutoLearningOrchestrator
                 orchestrator = AutoLearningOrchestrator()
                 
+                # Initialiser le filtre IA avec la clé API
+                user_config = user_manager.get_user_config(username)
+                if user_config:
+                    api_keys = user_config.get('api_keys', {})
+                    api_key = api_keys.get('groq') or api_keys.get('gemini') or api_keys.get('openai')
+                    if api_key:
+                        from ai_adapters.groq_multi_agent import GroqMultiAgentAdapter
+                        from utils.smart_filter import SmartJobFilter
+                        ai_adapter = GroqMultiAgentAdapter(api_key)
+                        orchestrator.scraper.smart_filter = SmartJobFilter(ai_adapter)
+                        logger.info("✅ Filtre IA activé")
+                
                 # Passer le stop_flag au scraper Playwright
                 orchestrator.scraper.stop_flag = stop_event
                 
@@ -219,11 +232,33 @@ def scrape_jobs():
                                     
                                     for j, job in enumerate(batch):
                                         try:
-                                            prompt = f"""Analyse la pertinence de cette offre pour ce candidat qui recherche "{keywords}". Note de 0 à 100.\n\nCANDIDAT:\n{candidate_profile}\n\nOFFRE:\nTitre: {job['title']}\nEntreprise: {job['company']}\nSource: {job.get('source', 'N/A')}\n\nCRITÈRES STRICTS:\n- Si le titre de l'offre ne correspond PAS du tout à la recherche: 0-30\n- Si le titre est vaguement lié: 30-50\n- Si le titre est dans le même domaine: 50-70\n- Si le titre correspond bien: 70-85\n- Si le titre correspond parfaitement: 85-100\n\nRéponds UNIQUEMENT avec un nombre entre 0 et 100."""
+                                            prompt = f"""Tu es un expert en matching candidat/offre. Analyse la pertinence STRICTE.
+
+RECHERCHE: "{keywords}"
+
+OFFRE:
+Titre: {job['title']}
+Entreprise: {job['company']}
+
+RÈGLES STRICTES:
+1. Si le titre ne contient AUCUN mot-clé de la recherche: 0-20
+2. Si le titre contient 1 mot-clé mais dans un contexte différent: 20-40
+3. Si le titre est dans un domaine proche mais pas identique: 40-60
+4. Si le titre correspond bien avec quelques différences: 60-80
+5. Si le titre correspond parfaitement: 80-100
+
+EXEMPLES:
+- Recherche "Data Engineer" + Titre "Ajusteur mouliste" = 0 (aucun rapport)
+- Recherche "Data Engineer" + Titre "Software Engineer" = 40 (ingénieur mais pas data)
+- Recherche "Data Engineer" + Titre "Data Analyst" = 60 (data mais pas engineer)
+- Recherche "Data Engineer Alternance" + Titre "Data Engineer Junior" = 75 (bon match, pas alternance)
+- Recherche "Data Engineer Alternance" + Titre "Data Engineer - Alternance" = 95 (parfait)
+
+Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                                             
                                             score_text = groq._call_agent(
                                                 model=groq.models["fast"],
-                                                system="Tu es un expert en matching candidat/offre. Réponds uniquement avec un nombre.",
+                                                system="Tu es un expert strict en matching. Sois sévère dans ta notation.",
                                                 prompt=prompt,
                                                 max_tokens=10
                                             )
@@ -343,11 +378,33 @@ def scrape_jobs():
                                 
                                 for j, job in enumerate(batch):
                                     try:
-                                        prompt = f"""Analyse la pertinence de cette offre pour ce candidat qui recherche "{keywords}". Note de 0 à 100.\n\nCANDIDAT:\n{candidate_profile}\n\nOFFRE:\nTitre: {job['title']}\nEntreprise: {job['company']}\nSource: {job['source']}\n\nCRITÈRES STRICTS:\n- Si le titre de l'offre ne correspond PAS du tout à la recherche: 0-30\n- Si le titre est vaguement lié: 30-50\n- Si le titre est dans le même domaine: 50-70\n- Si le titre correspond bien: 70-85\n- Si le titre correspond parfaitement: 85-100\n\nRéponds UNIQUEMENT avec un nombre entre 0 et 100."""
+                                        prompt = f"""Tu es un expert en matching candidat/offre. Analyse la pertinence STRICTE.
+
+RECHERCHE: "{keywords}"
+
+OFFRE:
+Titre: {job['title']}
+Entreprise: {job['company']}
+
+RÈGLES STRICTES:
+1. Si le titre ne contient AUCUN mot-clé de la recherche: 0-20
+2. Si le titre contient 1 mot-clé mais dans un contexte différent: 20-40
+3. Si le titre est dans un domaine proche mais pas identique: 40-60
+4. Si le titre correspond bien avec quelques différences: 60-80
+5. Si le titre correspond parfaitement: 80-100
+
+EXEMPLES:
+- Recherche "Data Engineer" + Titre "Ajusteur mouliste" = 0 (aucun rapport)
+- Recherche "Data Engineer" + Titre "Software Engineer" = 40 (ingénieur mais pas data)
+- Recherche "Data Engineer" + Titre "Data Analyst" = 60 (data mais pas engineer)
+- Recherche "Data Engineer Alternance" + Titre "Data Engineer Junior" = 75 (bon match, pas alternance)
+- Recherche "Data Engineer Alternance" + Titre "Data Engineer - Alternance" = 95 (parfait)
+
+Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                                         
                                         score_text = groq._call_agent(
                                             model=groq.models["fast"],
-                                            system="Tu es un expert en matching candidat/offre. Réponds uniquement avec un nombre.",
+                                            system="Tu es un expert strict en matching. Sois sévère dans ta notation.",
                                             prompt=prompt,
                                             max_tokens=10
                                         )
