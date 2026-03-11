@@ -1,1 +1,1 @@
-web: cd job_scraper && python web_app.py
+web: python job_scraper/web_app.py
