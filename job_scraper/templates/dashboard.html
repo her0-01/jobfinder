@@ -257,13 +257,31 @@
                         <option value="company">Entreprise</option>
                         <option value="salary">Salaire</option>
                     </select>
-                    <label style="margin-left: 20px;">Filtrer:</label>
+                    
+                    <label style="margin-left: 20px;">Pertinence:</label>
                     <select id="relevance-filter" onchange="filterJobs()">
                         <option value="all">Toutes les offres</option>
                         <option value="high">Haute pertinence uniquement</option>
                         <option value="medium">Moyenne et haute</option>
                     </select>
-                    <button class="btn btn-sm" onclick="toggleSuggestions()" style="margin-left: auto;">💡 Suggestions</button>
+                    
+                    <label style="margin-left: 20px;">Entreprise:</label>
+                    <select id="company-filter" onchange="filterJobs()">
+                        <option value="all">Toutes les entreprises</option>
+                    </select>
+                    
+                    <label style="margin-left: 20px;">Source:</label>
+                    <select id="source-filter" onchange="filterJobs()">
+                        <option value="all">Toutes les sources</option>
+                    </select>
+                    
+                    <label style="margin-left: 20px;">Localisation:</label>
+                    <select id="location-filter" onchange="filterJobs()">
+                        <option value="all">Toutes les localisations</option>
+                    </select>
+                    
+                    <button class="btn btn-sm" onclick="resetFilters()" style="margin-left: auto; background: #f56565; color: white;">🔄 Réinitialiser</button>
+                    <button class="btn btn-sm" onclick="toggleSuggestions()">💡 Suggestions</button>
                     <button class="btn btn-sm export-btn" onclick="exportJobs()">📥 Export</button>
                 </div>
                 <div style="margin: 15px 0;">
@@ -273,6 +291,14 @@
                     <span class="quick-filter" onclick="quickFilter('alternance')">🎓 Alternance</span>
                     <span class="quick-filter" onclick="quickFilter('stage')">📚 Stage</span>
                     <span class="quick-filter" onclick="quickFilter('urgent')">⚡ Urgent</span>
+                    <span class="quick-filter" onclick="quickFilter('paris')">🗼 Paris</span>
+                    <span class="quick-filter" onclick="quickFilter('lyon')">🏛️ Lyon</span>
+                    <span class="quick-filter" onclick="quickFilter('junior')">👶 Junior</span>
+                    <span class="quick-filter" onclick="quickFilter('senior')">👨‍💼 Senior</span>
+                </div>
+                <div id="filter-summary" style="margin: 10px 0; padding: 10px; background: #e6fffa; border-radius: 8px; display: none;">
+                    <strong>🎯 Filtres actifs:</strong> <span id="active-filters"></span>
+                    <button class="btn btn-sm" onclick="resetFilters()" style="margin-left: 10px; background: #f56565; color: white; padding: 5px 10px;">❌ Tout effacer</button>
                 </div>
             </div>
         </div>
@@ -638,7 +664,12 @@
                 return;
             }
             
+            // Peupler les filtres dynamiques
+            populateFilters();
+            
             let html = (filterBar ? filterBar.outerHTML : '');
+            html += container.querySelector('[style*="margin: 15px"]')?.outerHTML || '';
+            html += container.querySelector('#filter-summary')?.outerHTML || '<div id="filter-summary" style="margin: 10px 0; padding: 10px; background: #e6fffa; border-radius: 8px; display: none;"><strong>🎯 Filtres actifs:</strong> <span id="active-filters"></span><button class="btn btn-sm" onclick="resetFilters()" style="margin-left: 10px; background: #f56565; color: white; padding: 5px 10px;">❌ Tout effacer</button></div>';
             html += '<h2 style="margin: 20px 0;">🎯 Offres Trouvées (' + currentJobs.length + ')</h2><div class="jobs-grid">' +
                 currentJobs.map((job, index) => {
                     const score = job.relevance_score || 50;
@@ -647,7 +678,11 @@
                     const salary = job.salary || '';
                     
                     return `
-                    <div class="job-card ${isPremium ? 'premium' : ''}" data-relevance="${relevanceClass}">
+                    <div class="job-card ${isPremium ? 'premium' : ''}" 
+                         data-relevance="${relevanceClass}"
+                         data-company="${job.company}"
+                         data-source="${job.source}"
+                         data-location="${job.location}">
                         ${isPremium ? '<div class="premium-badge">⭐ TOP MATCH</div>' : ''}
                         <div class="relevance-badge relevance-${relevanceClass}">
                             ${Math.round(score)}%
@@ -714,29 +749,112 @@
             const match = text.match(/(\d+)\s*k/i);
             return match ? parseInt(match[1]) : 0;
         }
+        
+        function populateFilters() {
+            // Extraire les valeurs uniques
+            const companies = [...new Set(currentJobs.map(j => j.company).filter(Boolean))];
+            const sources = [...new Set(currentJobs.map(j => j.source).filter(Boolean))];
+            const locations = [...new Set(currentJobs.map(j => j.location).filter(Boolean))];
+            
+            // Peupler le filtre entreprise
+            const companyFilter = document.getElementById('company-filter');
+            if (companyFilter) {
+                companyFilter.innerHTML = '<option value="all">Toutes les entreprises (' + companies.length + ')</option>' +
+                    companies.sort().map(c => `<option value="${c}">${c}</option>`).join('');
+            }
+            
+            // Peupler le filtre source
+            const sourceFilter = document.getElementById('source-filter');
+            if (sourceFilter) {
+                sourceFilter.innerHTML = '<option value="all">Toutes les sources (' + sources.length + ')</option>' +
+                    sources.sort().map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+            
+            // Peupler le filtre localisation
+            const locationFilter = document.getElementById('location-filter');
+            if (locationFilter) {
+                locationFilter.innerHTML = '<option value="all">Toutes les localisations (' + locations.length + ')</option>' +
+                    locations.sort().map(l => `<option value="${l}">${l}</option>`).join('');
+            }
+        }
 
         function filterJobs() {
-            const filter = document.getElementById('relevance-filter').value;
+            const relevanceFilter = document.getElementById('relevance-filter').value;
+            const companyFilter = document.getElementById('company-filter')?.value || 'all';
+            const sourceFilter = document.getElementById('source-filter')?.value || 'all';
+            const locationFilter = document.getElementById('location-filter')?.value || 'all';
+            
             const allCards = document.querySelectorAll('.job-card');
             
             let visibleCount = 0;
+            const activeFilters = [];
+            
             allCards.forEach(card => {
                 const relevance = card.dataset.relevance;
-                let show = false;
+                const company = card.dataset.company;
+                const source = card.dataset.source;
+                const location = card.dataset.location;
                 
-                if (filter === 'all') {
-                    show = true;
-                } else if (filter === 'high' && relevance === 'high') {
-                    show = true;
-                } else if (filter === 'medium' && (relevance === 'high' || relevance === 'medium')) {
-                    show = true;
+                let show = true;
+                
+                // Filtre pertinence
+                if (relevanceFilter === 'high' && relevance !== 'high') {
+                    show = false;
+                } else if (relevanceFilter === 'medium' && relevance === 'low') {
+                    show = false;
+                }
+                
+                // Filtre entreprise
+                if (companyFilter !== 'all' && company !== companyFilter) {
+                    show = false;
+                }
+                
+                // Filtre source
+                if (sourceFilter !== 'all' && source !== sourceFilter) {
+                    show = false;
+                }
+                
+                // Filtre localisation
+                if (locationFilter !== 'all' && location !== locationFilter) {
+                    show = false;
                 }
                 
                 card.style.display = show ? 'block' : 'none';
                 if (show) visibleCount++;
             });
             
-            showNotification(`🎯 ${visibleCount} offres affichées`);
+            // Afficher les filtres actifs
+            if (relevanceFilter !== 'all') activeFilters.push(`Pertinence: ${relevanceFilter}`);
+            if (companyFilter !== 'all') activeFilters.push(`Entreprise: ${companyFilter}`);
+            if (sourceFilter !== 'all') activeFilters.push(`Source: ${sourceFilter}`);
+            if (locationFilter !== 'all') activeFilters.push(`Localisation: ${locationFilter}`);
+            
+            const filterSummary = document.getElementById('filter-summary');
+            const activeFiltersSpan = document.getElementById('active-filters');
+            
+            if (filterSummary && activeFiltersSpan) {
+                if (activeFilters.length > 0) {
+                    filterSummary.style.display = 'block';
+                    activeFiltersSpan.textContent = activeFilters.join(' • ');
+                } else {
+                    filterSummary.style.display = 'none';
+                }
+            }
+            
+            showNotification(`🎯 ${visibleCount}/${currentJobs.length} offres affichées`);
+        }
+        
+        function resetFilters() {
+            document.getElementById('relevance-filter').value = 'all';
+            if (document.getElementById('company-filter')) document.getElementById('company-filter').value = 'all';
+            if (document.getElementById('source-filter')) document.getElementById('source-filter').value = 'all';
+            if (document.getElementById('location-filter')) document.getElementById('location-filter').value = 'all';
+            
+            // Réinitialiser les filtres rapides
+            document.querySelectorAll('.quick-filter').forEach(f => f.classList.remove('active'));
+            
+            filterJobs();
+            showNotification('🔄 Filtres réinitialisés');
         }
 
         async function generateApplication(index) {
@@ -997,24 +1115,60 @@
         }
 
         function quickFilter(type) {
-            const filters = document.querySelectorAll('.quick-filter');
-            filters.forEach(f => f.classList.remove('active'));
-            event.target.classList.add('active');
+            const clickedFilter = event.target;
             
-            const keyword = document.getElementById('keywords').value;
-            const typeMap = {
-                'remote': 'Remote',
-                'cdi': 'CDI',
-                'alternance': 'Alternance',
-                'stage': 'Stage',
-                'urgent': keyword
-            };
+            // Toggle active
+            clickedFilter.classList.toggle('active');
             
-            if (type !== 'urgent') {
-                document.getElementById('keywords').value = keyword.split(' ')[0] + ' ' + typeMap[type];
-            }
+            // Filtrer les offres selon le type
+            const allCards = document.querySelectorAll('.job-card');
+            let visibleCount = 0;
             
-            showNotification(`🎯 Filtre appliqué: ${typeMap[type]}`);
+            allCards.forEach(card => {
+                const title = card.querySelector('.job-title')?.textContent.toLowerCase() || '';
+                const location = card.dataset.location?.toLowerCase() || '';
+                const company = card.dataset.company?.toLowerCase() || '';
+                
+                let show = true;
+                
+                // Appliquer tous les filtres rapides actifs
+                document.querySelectorAll('.quick-filter.active').forEach(activeFilter => {
+                    const filterText = activeFilter.textContent.toLowerCase();
+                    
+                    if (filterText.includes('remote') && !title.includes('remote') && !location.includes('remote') && !title.includes('télétravail')) {
+                        show = false;
+                    }
+                    if (filterText.includes('cdi') && !title.includes('cdi')) {
+                        show = false;
+                    }
+                    if (filterText.includes('alternance') && !title.includes('alternance')) {
+                        show = false;
+                    }
+                    if (filterText.includes('stage') && !title.includes('stage')) {
+                        show = false;
+                    }
+                    if (filterText.includes('urgent') && !title.includes('urgent')) {
+                        show = false;
+                    }
+                    if (filterText.includes('paris') && !location.includes('paris')) {
+                        show = false;
+                    }
+                    if (filterText.includes('lyon') && !location.includes('lyon')) {
+                        show = false;
+                    }
+                    if (filterText.includes('junior') && !title.includes('junior') && !title.includes('débutant')) {
+                        show = false;
+                    }
+                    if (filterText.includes('senior') && !title.includes('senior') && !title.includes('confirmé')) {
+                        show = false;
+                    }
+                });
+                
+                card.style.display = show ? 'block' : 'none';
+                if (show) visibleCount++;
+            });
+            
+            showNotification(`🎯 ${visibleCount}/${currentJobs.length} offres`);
         }
 
         function copyJobInfo(index) {

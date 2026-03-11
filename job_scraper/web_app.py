@@ -192,6 +192,62 @@ def scrape_jobs():
                     current_jobs = jobs
                     playwright_success = True
                     logger.info(f"✅ Playwright: {len(jobs)} offres")
+                    
+                    # CALCULER LES SCORES POUR PLAYWRIGHT AUSSI
+                    logger.info("🎯 Calcul des scores de pertinence avec IA...")
+                    scraping_status = {"running": True, "progress": "🤖 Calcul des scores IA...", "can_stop": False}
+                    
+                    user_config = user_manager.get_user_config(username)
+                    if user_config:
+                        api_keys = user_config.get('api_keys', {})
+                        api_key = api_keys.get('groq') or api_keys.get('gemini') or api_keys.get('openai')
+                        
+                        if api_key:
+                            try:
+                                groq = GroqMultiAgentAdapter(api_key)
+                                profile = user_config.get('profile', {})
+                                background = user_config.get('background', {})
+                                
+                                candidate_profile = f"RECHERCHE: {keywords}\nFORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}\nSPÉCIALISATION: {background.get('specialisation', '')}\nCOMPÉTENCES: {background.get('competences_cles', '')}"
+                                
+                                for i, job in enumerate(current_jobs):
+                                    try:
+                                        prompt = f"""Analyse la pertinence de cette offre pour ce candidat qui recherche "{keywords}". Note de 0 à 100.\n\nCANDIDAT:\n{candidate_profile}\n\nOFFRE:\nTitre: {job['title']}\nEntreprise: {job['company']}\nSource: {job.get('source', 'N/A')}\n\nCRITÈRES STRICTS:\n- Si le titre de l'offre ne correspond PAS du tout à la recherche: 0-30\n- Si le titre est vaguement lié: 30-50\n- Si le titre est dans le même domaine: 50-70\n- Si le titre correspond bien: 70-85\n- Si le titre correspond parfaitement: 85-100\n\nRéponds UNIQUEMENT avec un nombre entre 0 et 100."""
+                                        
+                                        score_text = groq._call_agent(
+                                            model=groq.models["fast"],
+                                            system="Tu es un expert en matching candidat/offre. Réponds uniquement avec un nombre.",
+                                            prompt=prompt,
+                                            max_tokens=10
+                                        )
+                                        
+                                        import re
+                                        numbers = re.findall(r'\d+', score_text)
+                                        score = int(numbers[0]) if numbers else 50
+                                        score = max(0, min(100, score))
+                                        
+                                        job['relevance_score'] = score
+                                        
+                                        if (i + 1) % 10 == 0:
+                                            logger.info(f"🎯 Scores calculés: {i+1}/{len(current_jobs)}")
+                                            scraping_status = {"running": True, "progress": f"🤖 Calcul scores: {i+1}/{len(current_jobs)}", "can_stop": False}
+                                        
+                                    except Exception as e:
+                                        logger.warning(f"⚠️ Erreur score job {i}: {e}")
+                                        job['relevance_score'] = 50.0
+                                
+                                logger.info(f"✅ Scores calculés pour {len(current_jobs)} offres")
+                            except Exception as e:
+                                logger.error(f"❌ Erreur calcul scores: {e}")
+                                for job in current_jobs:
+                                    job['relevance_score'] = 50.0
+                        else:
+                            logger.warning("⚠️ Pas de clé API - scores par défaut")
+                            for job in current_jobs:
+                                job['relevance_score'] = 50.0
+                    else:
+                        for job in current_jobs:
+                            job['relevance_score'] = 50.0
                 else:
                     logger.warning("⚠️ Playwright: 0 résultats, fallback Selenium")
                     raise Exception("No results from Playwright")
@@ -250,14 +306,79 @@ def scrape_jobs():
                 current_jobs = unique_jobs
                 logger.info(f"✅ Selenium fallback: {len(current_jobs)} offres")
             
+            # CALCULER LES SCORES AVANT SAUVEGARDE
+            logger.info("🎯 Calcul des scores de pertinence avec IA...")
+            scraping_status = {"running": True, "progress": "🤖 Calcul des scores IA...", "can_stop": False}
+            
+            # Récupérer config utilisateur pour l'IA
+            user_config = user_manager.get_user_config(username)
+            if user_config:
+                api_keys = user_config.get('api_keys', {})
+                api_key = api_keys.get('groq') or api_keys.get('gemini') or api_keys.get('openai')
+                
+                if api_key:
+                    try:
+                        groq = GroqMultiAgentAdapter(api_key)
+                        profile = user_config.get('profile', {})
+                        background = user_config.get('background', {})
+                        
+                        candidate_profile = f"RECHERCHE: {keywords}\nFORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}\nSPÉCIALISATION: {background.get('specialisation', '')}\nCOMPÉTENCES: {background.get('competences_cles', '')}"
+                        
+                        for i, job in enumerate(current_jobs):
+                            try:
+                                prompt = f"""Analyse la pertinence de cette offre pour ce candidat qui recherche "{keywords}". Note de 0 à 100.\n\nCANDIDAT:\n{candidate_profile}\n\nOFFRE:\nTitre: {job['title']}\nEntreprise: {job['company']}\nSource: {job['source']}\n\nCRITÈRES STRICTS:\n- Si le titre de l'offre ne correspond PAS du tout à la recherche: 0-30\n- Si le titre est vaguement lié: 30-50\n- Si le titre est dans le même domaine: 50-70\n- Si le titre correspond bien: 70-85\n- Si le titre correspond parfaitement: 85-100\n\nRéponds UNIQUEMENT avec un nombre entre 0 et 100."""
+                                
+                                score_text = groq._call_agent(
+                                    model=groq.models["fast"],
+                                    system="Tu es un expert en matching candidat/offre. Réponds uniquement avec un nombre.",
+                                    prompt=prompt,
+                                    max_tokens=10
+                                )
+                                
+                                import re
+                                numbers = re.findall(r'\d+', score_text)
+                                score = int(numbers[0]) if numbers else 50
+                                score = max(0, min(100, score))
+                                
+                                job['relevance_score'] = score
+                                
+                                if (i + 1) % 10 == 0:
+                                    logger.info(f"🎯 Scores calculés: {i+1}/{len(current_jobs)}")
+                                    scraping_status = {"running": True, "progress": f"🤖 Calcul scores: {i+1}/{len(current_jobs)}", "can_stop": False}
+                                
+                            except Exception as e:
+                                logger.warning(f"⚠️ Erreur score job {i}: {e}")
+                                job['relevance_score'] = 50.0
+                        
+                        logger.info(f"✅ Scores calculés pour {len(current_jobs)} offres")
+                    except Exception as e:
+                        logger.error(f"❌ Erreur calcul scores: {e}")
+                        for job in current_jobs:
+                            job['relevance_score'] = 50.0
+                else:
+                    logger.warning("⚠️ Pas de clé API - scores par défaut")
+                    for job in current_jobs:
+                        job['relevance_score'] = 50.0
+            else:
+                for job in current_jobs:
+                    job['relevance_score'] = 50.0
+            
             # Sauvegarder en DB
             if use_database:
                 user_config = user_manager.get_user_config(username)
                 if user_config and 'user_id' in user_config:
                     user_id = user_config['user_id']
                     search_id = db_manager.save_job_search(user_id, keywords, location, contract_type)
+                    
+                    # Sauvegarder chaque offre avec son score
                     for job in current_jobs:
+                        # S'assurer que le score est présent
+                        if 'relevance_score' not in job or job['relevance_score'] is None:
+                            job['relevance_score'] = 50.0
+                        
                         db_manager.save_job_offer(search_id, user_id, job)
+                    
+                    logger.info(f"✅ Sauvegardé en DB: {len(current_jobs)} offres avec scores")
             
             # Sauvegarder JSON
             with open('data/jobs_latest.json', 'w', encoding='utf-8') as f:
@@ -310,6 +431,12 @@ def get_search_jobs(search_id):
         return jsonify([])
     
     jobs = db_manager.get_search_jobs(search_id)
+    
+    # Log pour déboguer
+    logger.info(f"📊 Chargement recherche {search_id}: {len(jobs)} offres")
+    if jobs:
+        logger.info(f"🎯 Scores: {[j.get('relevance_score', 'N/A') for j in jobs[:5]]}")
+    
     current_jobs = jobs  # Charger dans la session
     return jsonify(jobs)
 

@@ -612,30 +612,49 @@ class DatabaseManager:
         return [dict(row) for row in cursor.fetchall()]
     
     def get_search_jobs(self, search_id):
-        """Récupère toutes les offres d'une recherche spécifique"""
+        """Récupère toutes les offres d'une recherche spécifique avec leurs scores"""
         cursor = self.conn.cursor(cursor_factory=RealDictCursor) if self.use_postgres else self.conn.cursor()
         
         cursor.execute(
-            '''SELECT * FROM job_offers 
+            '''SELECT id, search_id, user_id, title, company, location, url, 
+                      description, relevance_score, source_site, scraped_at, applied, applied_at
+               FROM job_offers 
                WHERE search_id = %s 
-               ORDER BY scraped_at DESC''' if self.use_postgres
-            else '''SELECT * FROM job_offers 
+               ORDER BY relevance_score DESC, scraped_at DESC''' if self.use_postgres
+            else '''SELECT id, search_id, user_id, title, company, location, url, 
+                           description, relevance_score, source_site, scraped_at, applied, applied_at
+                    FROM job_offers 
                     WHERE search_id = ? 
-                    ORDER BY scraped_at DESC''',
+                    ORDER BY relevance_score DESC, scraped_at DESC''',
             (search_id,)
         )
         
         jobs = cursor.fetchall()
-        return [{
-            'title': row['title'] if self.use_postgres else row[3],
-            'company': row['company'] if self.use_postgres else row[4],
-            'location': row['location'] if self.use_postgres else row[5],
-            'link': row['url'] if self.use_postgres else row[6],
-            'description': row['description'] if self.use_postgres else row[7],
-            'relevance_score': row['relevance_score'] if self.use_postgres else row[8],
-            'source': row['source_site'] if self.use_postgres else row[9],
-            'scraped_at': row['scraped_at'] if self.use_postgres else row[10]
-        } for row in jobs]
+        
+        if self.use_postgres:
+            return [{
+                'id': row['id'],
+                'title': row['title'],
+                'company': row['company'],
+                'location': row['location'],
+                'link': row['url'],
+                'description': row['description'],
+                'relevance_score': float(row['relevance_score']) if row['relevance_score'] else 50.0,
+                'source': row['source_site'],
+                'scraped_at': row['scraped_at']
+            } for row in jobs]
+        else:
+            return [{
+                'id': row[0],
+                'title': row[3],
+                'company': row[4],
+                'location': row[5],
+                'link': row[6],
+                'description': row[7],
+                'relevance_score': float(row[8]) if row[8] else 50.0,
+                'source': row[9],
+                'scraped_at': row[10]
+            } for row in jobs]
     
     def save_alert_notification(self, alert_id, user_id, job):
         """Sauvegarder une notification d'alerte"""
