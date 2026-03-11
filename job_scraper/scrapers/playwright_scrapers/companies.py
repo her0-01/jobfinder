@@ -101,40 +101,26 @@ async def scrape_company_async(url, company_name, keywords, location="France"):
             return []
 
 async def scrape_all_companies_async(keywords, location="France", contract_type=""):
-    """Scrape tous les sites carrières en parallèle"""
-    print(f"[Companies] Démarrage scraping de 15 entreprises: '{keywords}'")
+    """Scrape 5 entreprises seulement (au lieu de 15) pour éviter OOM"""
+    print(f"[Companies] Démarrage scraping de 5 entreprises: '{keywords}'")
     companies = {
         'Bouygues': 'https://joining.bouygues.com/global/fr/search-results',
         'Alstom': 'https://jobsearch.alstom.com/search/',
-        'Stellantis': 'https://careers.stellantis.com/job-search-results/',
         'Renault': 'https://www.renaultgroup.com/carrieres-renault/nos-offres-monde/',
-        'Société Générale': 'https://careers.societegenerale.com/rechercher',
-        'BNP Paribas': 'https://group.bnpparibas/emploi-carriere/toutes-offres-emploi',
-        'Schneider Electric': 'https://careers.se.com/jobs',
         'Safran': 'https://www.safran-group.com/fr/offres',
-        'Thales': 'https://careers.thalesgroup.com/global/en/search-results',
-        'Airbus': 'https://ag.wd3.myworkdayjobs.com/en-US/Airbus',
         'Orange': 'https://orange.jobs/jobs/search.do',
-        'Capgemini': 'https://www.capgemini.com/fr-fr/carrieres/rejoignez-nous/rechercher-une-offre-d-emploi/',
-        'Atos': 'https://atos.net/en/careers',
-        'Dassault Systèmes': 'https://careers.3ds.com/fr/jobs',
-        'TotalEnergies': 'https://totalenergies.avature.net/fr_FR/careers/SearchJobs',
     }
     
-    print(f"[Companies] Lancement de {len(companies)} scrapers en parallèle...")
-    tasks = [scrape_company_async(url, name, keywords, location) for name, url in companies.items()]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    print(f"[Companies] Scrapers terminés, traitement des résultats...")
-    
+    print(f"[Companies] Lancement de {len(companies)} scrapers SÉQUENTIELLEMENT...")
     all_jobs = []
-    for i, result in enumerate(results):
-        if isinstance(result, Exception):
-            print(f"[Companies] Scraper {i} erreur: {result}")
-        elif isinstance(result, list):
-            print(f"[Companies] Scraper {i}: {len(result)} offres")
-            all_jobs.extend(result)
-        else:
-            print(f"[Companies] Scraper {i}: résultat inattendu {type(result)}")
+    for name, url in companies.items():
+        try:
+            result = await scrape_company_async(url, name, keywords, location)
+            if isinstance(result, list):
+                print(f"[Companies] {name}: {len(result)} offres")
+                all_jobs.extend(result)
+        except Exception as e:
+            print(f"[Companies] {name} erreur: {e}")
     
     print(f"[Companies] Total: {len(all_jobs)} offres")
     return all_jobs

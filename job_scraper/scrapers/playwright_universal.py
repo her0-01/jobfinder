@@ -22,7 +22,7 @@ class PlaywrightUniversalScraper:
         self.jobs = []
     
     async def scrape_all_async(self, keywords, location="France", contract_type=""):
-        """Scrape TOUS les sites (23 sites) en parallèle avec Playwright"""
+        """Scrape TOUS les sites (23 sites) en SÉQUENTIEL pour éviter OOM sur Railway"""
         normalized_keywords = self.normalizer.normalize(keywords)
         
         # Vérifier cache
@@ -32,37 +32,37 @@ class PlaywrightUniversalScraper:
             self.jobs = cached
             return cached
         
-        logger.info(f"🚀 Scraping parallèle: {normalized_keywords} @ {location}")
+        logger.info(f"🚀 Scraping séquentiel: {normalized_keywords} @ {location}")
         logger.info(f"📝 Keywords originaux: '{keywords}' → normalisés: '{normalized_keywords}'")
         
-        # Lancer TOUS les scrapers en parallèle
-        tasks = [
-            # Sites universels (8)
-            scrape_indeed_async(normalized_keywords, location, contract_type),
-            scrape_linkedin_async(normalized_keywords, location, contract_type),
-            scrape_wttj_async(normalized_keywords, location, contract_type),
-            scrape_apec_async(normalized_keywords, location, contract_type),
-            scrape_hellowork_async(normalized_keywords, location, contract_type),
-            scrape_meteojob_async(normalized_keywords, location, contract_type),
-            scrape_regionsjob_async(normalized_keywords, location, contract_type),
-            scrape_monster_async(normalized_keywords, location, contract_type),
-            # Sites carrières (15)
-            scrape_all_companies_async(normalized_keywords, location, contract_type),
-        ]
-        
-        logger.info(f"🔄 Lancement de {len(tasks)} scrapers en parallèle...")
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        logger.info(f"✅ Scrapers terminés, traitement des résultats...")
-        
         jobs = []
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                logger.error(f"❌ Scraper {i} erreur: {result}")
-            elif isinstance(result, list):
-                logger.info(f"✅ Scraper {i}: {len(result)} offres")
+        
+        # Scraper Indeed
+        try:
+            result = await scrape_indeed_async(normalized_keywords, location, contract_type)
+            if isinstance(result, list):
                 jobs.extend(result)
-            else:
-                logger.warning(f"⚠️ Scraper {i}: résultat inattendu {type(result)}")
+                logger.info(f"✅ Indeed: {len(result)} offres")
+        except Exception as e:
+            logger.error(f"❌ Indeed erreur: {e}")
+        
+        # Scraper LinkedIn
+        try:
+            result = await scrape_linkedin_async(normalized_keywords, location, contract_type)
+            if isinstance(result, list):
+                jobs.extend(result)
+                logger.info(f"✅ LinkedIn: {len(result)} offres")
+        except Exception as e:
+            logger.error(f"❌ LinkedIn erreur: {e}")
+        
+        # Scraper WTTJ
+        try:
+            result = await scrape_wttj_async(normalized_keywords, location, contract_type)
+            if isinstance(result, list):
+                jobs.extend(result)
+                logger.info(f"✅ WTTJ: {len(result)} offres")
+        except Exception as e:
+            logger.error(f"❌ WTTJ erreur: {e}")
         
         logger.info(f"📊 Total avant dédupe: {len(jobs)} offres")
         
