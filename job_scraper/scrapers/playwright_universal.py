@@ -67,13 +67,6 @@ class PlaywrightUniversalScraper:
                 logger.info(f"⏹️ Arrêt demandé - Skip entreprises restantes")
                 break
             
-            # Mettre à jour le statut
-            if hasattr(builtins, 'scraping_status'):
-                builtins.scraping_status = {"running": True, "progress": f"🏢 {company_name} ({i}/15) • {len(jobs)} offres"}
-            
-            if self.status_callback:
-                self.status_callback(company_name, i, 15, len(jobs))
-            
             logger.info(f"\n[{i}/15] 🏢 {company_name}...")
             
             try:
@@ -81,11 +74,19 @@ class PlaywrightUniversalScraper:
                 result = await scrape_company_async(company_url, company_name, normalized_keywords, location)
                 if isinstance(result, list):
                     jobs.extend(result)
+                    self.jobs = jobs  # Mettre à jour self.jobs en temps réel
                     logger.info(f"✅ {company_name}: {len(result)} offres")
                     print(f"✓ {company_name}: {len(result)} offres")
             except Exception as e:
                 logger.error(f"❌ {company_name} erreur: {e}")
                 print(f"✗ {company_name}: Erreur")
+            
+            # Mettre à jour le statut APRÈS avoir ajouté les offres
+            if hasattr(builtins, 'scraping_status'):
+                builtins.scraping_status = {"running": True, "progress": f"🏢 {company_name} ({i}/15) • {len(jobs)} offres"}
+            
+            if self.status_callback:
+                self.status_callback(company_name, i, 15, len(jobs))
         
         # PHASE 2: Sites universels (8 sites)
         sites = [
@@ -111,24 +112,25 @@ class PlaywrightUniversalScraper:
             # Progression totale: 15 entreprises + i sites universels
             total_progress = 15 + i
             
-            # Mettre à jour le statut
-            if hasattr(builtins, 'scraping_status'):
-                builtins.scraping_status = {"running": True, "progress": f"🌐 {site_name} ({total_progress}/23) • {len(jobs)} offres"}
-            
-            if self.status_callback:
-                self.status_callback(site_name, total_progress, 23, len(jobs))
-            
             logger.info(f"\n[{total_progress}/23] 🌐 {site_name}...")
             
             try:
                 result = await scrape_func(normalized_keywords, location, contract_type)
                 if isinstance(result, list):
                     jobs.extend(result)
+                    self.jobs = jobs  # Mettre à jour self.jobs en temps réel
                     logger.info(f"✅ {site_name}: {len(result)} offres")
                     print(f"✓ {site_name}: {len(result)} offres")
             except Exception as e:
                 logger.error(f"❌ {site_name} erreur: {e}")
                 print(f"✗ {site_name}: Erreur")
+            
+            # Mettre à jour le statut APRÈS avoir ajouté les offres
+            if hasattr(builtins, 'scraping_status'):
+                builtins.scraping_status = {"running": True, "progress": f"🌐 {site_name} ({total_progress}/23) • {len(jobs)} offres"}
+            
+            if self.status_callback:
+                self.status_callback(site_name, total_progress, 23, len(jobs))
         
         logger.info(f"📊 Total avant dédupe: {len(jobs)} offres")
         

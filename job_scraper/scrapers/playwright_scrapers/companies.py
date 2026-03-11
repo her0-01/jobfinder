@@ -15,9 +15,16 @@ async def scrape_company_async(url, company_name, keywords, location="France"):
         
         try:
             print(f"[{company_name}] URL: {url}")
-            await page.goto(url, timeout=15000)
-            print(f"[{company_name}] Page chargée, attente 3s...")
-            await page.wait_for_timeout(3000)
+            try:
+                await page.goto(url, timeout=15000)
+            except Exception as e:
+                if "ERR_HTTP2_PROTOCOL_ERROR" in str(e):
+                    print(f"[{company_name}] Erreur HTTP2, retry avec wait_until='domcontentloaded'...")
+                    await page.goto(url, timeout=15000, wait_until='domcontentloaded')
+                else:
+                    raise
+            print(f"[{company_name}] Page chargée, attente 5s...")
+            await page.wait_for_timeout(5000)  # Augmenté de 3s à 5s
             
             # Accepter cookies
             try:
@@ -30,6 +37,14 @@ async def scrape_company_async(url, company_name, keywords, location="France"):
             # Scroll
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight/3)")
             await page.wait_for_timeout(2000)
+            
+            # Attendre que les offres se chargent (sélecteurs communs)
+            try:
+                await page.wait_for_selector('a[href*="job"], a[href*="career"], a[href*="offre"]', timeout=3000)
+                print(f"[{company_name}] Offres chargées")
+            except:
+                print(f"[{company_name}] Timeout attente offres, continue quand même")
+            
             print(f"[{company_name}] Scroll effectué")
             
             content = await page.content()

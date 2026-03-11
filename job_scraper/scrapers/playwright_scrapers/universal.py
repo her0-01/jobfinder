@@ -18,7 +18,7 @@ async def scrape_wttj_async(keywords, location="France", contract_type=""):
             
             cards = await page.query_selector_all('li[data-testid="search-results-list-item-wrapper"]')
             print(f"[WTTJ] {len(cards)} cartes trouvées")
-            for card in cards[:30]:
+            for card in cards[:10]:  # Limité à 10
                 try:
                     title_el = await card.query_selector('h2')
                     company_el = await card.query_selector('span.sc-TezEC')
@@ -48,8 +48,8 @@ async def scrape_wttj_async(keywords, location="France", contract_type=""):
             print(f"[WTTJ] ERREUR: {e}")
         finally:
             await browser.close()
-    print(f"[WTTJ] Retour: {len(jobs)} offres")
-    return jobs
+    print(f"[WTTJ] Retour: {len(jobs[:10])} offres (limité à 10)")
+    return jobs[:10]
 
 async def scrape_apec_async(keywords, location="France", contract_type=""):
     jobs = []
@@ -62,7 +62,7 @@ async def scrape_apec_async(keywords, location="France", contract_type=""):
             await page.wait_for_timeout(4000)
             
             cards = await page.query_selector_all('div[data-testid="offer-card"]')
-            for card in cards[:30]:
+            for card in cards[:10]:  # Limité à 10
                 try:
                     title_el = await card.query_selector('h3[data-testid="offer-title"]')
                     company_el = await card.query_selector('span[data-testid="company-name"]')
@@ -92,7 +92,7 @@ async def scrape_apec_async(keywords, location="France", contract_type=""):
             print(f"APEC error: {e}")
         finally:
             await browser.close()
-    return jobs
+    return jobs[:10]
 
 async def scrape_hellowork_async(keywords, location="France", contract_type=""):
     jobs = []
@@ -132,7 +132,7 @@ async def scrape_hellowork_async(keywords, location="France", contract_type=""):
             print(f"HelloWork error: {e}")
         finally:
             await browser.close()
-    return jobs
+    return jobs[:10]
 
 async def scrape_meteojob_async(keywords, location="France", contract_type=""):
     jobs = []
@@ -172,7 +172,7 @@ async def scrape_meteojob_async(keywords, location="France", contract_type=""):
             print(f"Meteojob error: {e}")
         finally:
             await browser.close()
-    return jobs
+    return jobs[:10]
 
 async def scrape_regionsjob_async(keywords, location="France", contract_type=""):
     jobs = []
@@ -212,7 +212,7 @@ async def scrape_regionsjob_async(keywords, location="France", contract_type="")
             print(f"RegionsJob error: {e}")
         finally:
             await browser.close()
-    return jobs
+    return jobs[:10]
 
 async def scrape_monster_async(keywords, location="France", contract_type=""):
     jobs = []
@@ -225,7 +225,7 @@ async def scrape_monster_async(keywords, location="France", contract_type=""):
             await page.wait_for_timeout(3000)
             
             cards = await page.query_selector_all('div[class*="job-card"], article[class*="job"]')
-            for card in cards[:30]:
+            for card in cards[:10]:  # Limité à 10
                 try:
                     title_el = await card.query_selector('h2, h3, a[class*="title"]')
                     company_el = await card.query_selector('.company, span[class*="company"]')
@@ -252,4 +252,4 @@ async def scrape_monster_async(keywords, location="France", contract_type=""):
             print(f"Monster error: {e}")
         finally:
             await browser.close()
-    return jobs
+    return jobs[:10]

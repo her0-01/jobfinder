@@ -35,7 +35,7 @@ async def scrape_indeed_async(keywords, location="France", contract_type=""):
             cards = await page.query_selector_all("div.job_seen_beacon")
             print(f"[Indeed] {len(cards)} cartes trouvées")
             
-            for card in cards[:50]:
+            for card in cards[:10]:  # Limité à 10 offres
                 try:
                     title_el = await card.query_selector("h2.jobTitle span")
                     company_el = await card.query_selector("span[data-testid='company-name']")
@@ -75,5 +75,5 @@ async def scrape_indeed_async(keywords, location="France", contract_type=""):
         finally:
             await browser.close()
     
-    print(f"[Indeed] Retour: {len(jobs)} offres")
-    return jobs
+    print(f"[Indeed] Retour: {len(jobs[:10])} offres (limité à 10)")
+    return jobs[:10]  # Limité à 10

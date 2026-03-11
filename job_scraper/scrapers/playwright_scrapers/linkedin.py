@@ -21,7 +21,7 @@ async def scrape_linkedin_async(keywords, location="France", contract_type=""):
             cards = await page.query_selector_all("div.base-card")
             print(f"[LinkedIn] {len(cards)} cartes trouvées")
             
-            for card in cards[:50]:
+            for card in cards[:10]:  # Limité à 10 offres
                 try:
                     title_el = await card.query_selector("h3")
                     company_el = await card.query_selector("h4")
@@ -58,5 +58,5 @@ async def scrape_linkedin_async(keywords, location="France", contract_type=""):
         finally:
             await browser.close()
     
-    print(f"[LinkedIn] Retour: {len(jobs)} offres")
-    return jobs
+    print(f"[LinkedIn] Retour: {len(jobs[:10])} offres (limité à 10)")
+    return jobs[:10]  # Limité à 10
