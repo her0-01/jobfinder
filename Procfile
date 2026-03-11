@@ -1,1 +1,1 @@
-web: bash job_scraper/start.sh
+web: bash start.sh
