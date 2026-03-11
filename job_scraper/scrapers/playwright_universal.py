@@ -12,7 +12,6 @@ from utils.cache import JobCache
 from nlp_preprocess.normalizer import NLPNormalizer
 from utils.fallback import FallbackSystem
 from utils.logger import setup_logger
-from utils.smart_filter import SmartJobFilter
 
 logger = setup_logger('playwright_universal')
 
@@ -21,7 +20,6 @@ class PlaywrightUniversalScraper:
         self.cache = JobCache()
         self.normalizer = NLPNormalizer()
         self.fallback = FallbackSystem()
-        self.smart_filter = None  # Sera initialisé avec l'IA
         self.jobs = []
         self.status_callback = None  # Callback pour progression
         self.stop_flag = None  # Flag pour arrêt
@@ -193,16 +191,10 @@ class PlaywrightUniversalScraper:
         
         logger.info(f"📊 Après dédupe: {len(unique)} offres")
         
-        # FILTRAGE INTELLIGENT avec IA
-        if self.smart_filter:
-            logger.info(f"\n🧠 Filtrage intelligent IA des offres...")
-            filtered = self.smart_filter.filter_jobs(unique, keywords, min_score=30)
-            stats = self.smart_filter.get_filter_stats(len(unique), len(filtered))
-            logger.info(f"✅ Filtrage: {stats['removed_count']} offres exclues ({stats['removal_rate']}%)")
-            logger.info(f"🎯 {len(filtered)} offres pertinentes conservées")
-        else:
-            logger.warning("⚠️ Filtre IA non disponible - conservation de toutes les offres")
-            filtered = unique
+        # FILTRAGE RAPIDE par règles simples (pas d'IA)
+        logger.info(f"\n⚡ Filtrage rapide par règles...")
+        filtered = self._fast_filter(unique)
+        logger.info(f"✅ {len(unique) - len(filtered)} offres exclues, {len(filtered)} conservées")
         
         # Fallback si 0 résultats
         if len(filtered) == 0:
@@ -229,3 +221,108 @@ class PlaywrightUniversalScraper:
     def scrape_all(self, keywords, location="France", contract_type=""):
         """Version synchrone pour compatibilité"""
         return asyncio.run(self.scrape_all_async(keywords, location, contract_type))
+    
+    def _fast_filter(self, jobs):
+        """Filtrage rapide par règles simples (sans IA)"""
+        filtered = []
+        
+        # Mots-clés de navigation/menu à exclure (EXHAUSTIF)
+        navigation_keywords = [
+            # Navigation générale
+            "i'm a", "i am a", "je suis", "explore", "discover", "learn more", "find out",
+            "all jobs", "view all", "see all", "voir tout", "browse", "search", "rechercher",
+            "filter by", "filtrer par", "sort by", "trier par", "categories", "catégories",
+            "locations", "localisations", "departments", "départements", "teams", "équipes",
+            
+            # Pages entreprise
+            "about us", "à propos", "our culture", "notre culture", "benefits", "avantages",
+            "diversity", "diversité", "inclusion", "equity", "égalité", "our values", "nos valeurs",
+            "our mission", "notre mission", "our story", "notre histoire", "careers", "carrières",
+            
+            # Actions utilisateur
+            "sign in", "log in", "connexion", "register", "inscription", "apply now", "postuler",
+            "submit", "soumettre", "back to", "retour", "home", "accueil",
+            
+            # Pagination
+            "next page", "previous", "précédent", "suivant", "page ", "load more", "charger plus",
+            "show more", "afficher plus", "voir plus",
+            
+            # Langues
+            "english", "french", "français", "spanish", "german", "italian", "portuguese",
+            "chinese", "japanese", "arabic", "russian", "dutch", "swedish", "norwegian",
+            "brazilian", "mexican", "canadian", "american", "british", "australian",
+            
+            # Filtres/Tri
+            "relevance", "pertinence", "date", "salary", "salaire", "distance", "contract type",
+            "type de contrat", "experience level", "niveau d'expérience", "remote", "télétravail",
+            "full time", "part time", "temps plein", "temps partiel", "internship", "stage",
+            
+            # Domaines génériques (sans métier)
+            "software, technology", "innovation and", "digital transformation", "business strategy",
+            "operations and", "sales and marketing", "finance and", "human resources and",
+            
+            # Menus de sélection
+            "select a", "choose a", "sélectionner", "choisir", "pick a", "find your", "trouvez votre",
+            "what are you", "who are you", "qui êtes-vous", "what do you", "que faites-vous",
+            
+            # Sections site
+            "job alerts", "alertes emploi", "saved jobs", "emplois sauvegardés", "my applications",
+            "mes candidatures", "profile", "profil", "settings", "paramètres", "help", "aide",
+            "contact us", "nous contacter", "faq", "support", "privacy", "confidentialité",
+            "terms", "conditions", "legal", "légal", "cookies", "sitemap", "plan du site"
+        ]
+        
+        # Patterns à exclure (regex-like)
+        exclude_patterns = [
+            "page ", "p. ", "pg ",  # Pagination
+            "...", "→", "›", "»",  # Symboles navigation
+        ]
+        
+        for job in jobs:
+            title = job['title'].strip()
+            title_lower = title.lower()
+            
+            # 1. Exclure si contient mot-clé de navigation
+            if any(nav in title_lower for nav in navigation_keywords):
+                continue
+            
+            # 2. Exclure si contient pattern de navigation
+            if any(pattern in title_lower for pattern in exclude_patterns):
+                continue
+            
+            # 3. Exclure si trop court (< 8 caractères)
+            if len(title) < 8:
+                continue
+            
+            # 4. Exclure si trop long (> 150 caractères = description)
+            if len(title) > 150:
+                continue
+            
+            # 5. Exclure si que des mots génériques (pas de métier)
+            words = title_lower.split()
+            generic_words = {'software', 'technology', 'innovation', 'digital', 'transformation',
+                           'excellence', 'leadership', 'strategy', 'operations', 'corporate',
+                           'business', 'management', 'and', 'or', 'the', 'a', 'an', 'in', 'at',
+                           'for', 'with', 'to', 'of', 'on', 'by', 'from', 'et', 'ou', 'le', 'la',
+                           'les', 'un', 'une', 'des', 'de', 'du', 'en', 'pour', 'avec', 'sur'}
+            
+            # Si tous les mots sont génériques → exclure
+            if len(words) > 0 and all(word in generic_words for word in words):
+                continue
+            
+            # 6. Exclure si commence par symbole/nombre
+            if title[0].isdigit() or title[0] in ['>', '<', '|', '-', '*', '•', '→']:
+                continue
+            
+            # 7. Exclure si que majuscules (souvent catégories)
+            if title.isupper() and len(title) > 20:
+                continue
+            
+            # 8. Exclure si contient "©", "®", "™" (marques/copyright)
+            if any(symbol in title for symbol in ['©', '®', '™', '℠']):
+                continue
+            
+            # ✅ Garder tout le reste (vrais postes)
+            filtered.append(job)
+        
+        return filtered

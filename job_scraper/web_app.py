@@ -174,18 +174,6 @@ def scrape_jobs():
                 from orchestrator.auto_learning import AutoLearningOrchestrator
                 orchestrator = AutoLearningOrchestrator()
                 
-                # Initialiser le filtre IA avec la clé API
-                user_config = user_manager.get_user_config(username)
-                if user_config:
-                    api_keys = user_config.get('api_keys', {})
-                    api_key = api_keys.get('groq') or api_keys.get('gemini') or api_keys.get('openai')
-                    if api_key:
-                        from ai_adapters.groq_multi_agent import GroqMultiAgentAdapter
-                        from utils.smart_filter import SmartJobFilter
-                        ai_adapter = GroqMultiAgentAdapter(api_key)
-                        orchestrator.scraper.smart_filter = SmartJobFilter(ai_adapter)
-                        logger.info("✅ Filtre IA activé")
-                
                 # Passer le stop_flag au scraper Playwright
                 orchestrator.scraper.stop_flag = stop_event
                 
