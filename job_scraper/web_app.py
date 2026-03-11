@@ -166,20 +166,27 @@ def scrape_jobs():
         stop_event = threading.Event()
         
         try:
-            # Essayer Playwright d'abord, fallback Selenium si erreur
+            # Essayer Playwright d'abord, fallback Selenium si erreur ou 0 résultats
+            playwright_success = False
             try:
                 scraping_status = {"running": True, "progress": "🚀 Tentative Playwright...", "can_stop": True}
                 from orchestrator.auto_learning import AutoLearningOrchestrator
                 orchestrator = AutoLearningOrchestrator()
                 jobs = orchestrator.sync_search(keywords, location, contract_type)
-                current_jobs = jobs
-                logger.info(f"✅ Playwright: {len(jobs)} offres")
+                
+                if len(jobs) > 0:
+                    current_jobs = jobs
+                    playwright_success = True
+                    logger.info(f"✅ Playwright: {len(jobs)} offres")
+                else:
+                    logger.warning("⚠️ Playwright: 0 résultats, fallback Selenium")
+                    raise Exception("No results from Playwright")
             except Exception as playwright_error:
                 logger.warning(f"⚠️ Playwright échoué: {playwright_error}, fallback Selenium")
                 scraping_status = {"running": True, "progress": "🔄 Fallback Selenium...", "can_stop": True}
-                
+            
+            if not playwright_success:
                 # FALLBACK: Ancien système Selenium
-                if not stop_event.is_set():
                     scraping_status = {"running": True, "progress": "🏢 Scraping sites carrières...", "can_stop": True}
                     adaptive = AdaptiveScraper(headless=True)
                     

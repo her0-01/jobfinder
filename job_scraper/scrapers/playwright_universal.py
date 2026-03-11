@@ -33,6 +33,7 @@ class PlaywrightUniversalScraper:
             return cached
         
         logger.info(f"🚀 Scraping parallèle: {normalized_keywords} @ {location}")
+        logger.info(f"📝 Keywords originaux: '{keywords}' → normalisés: '{normalized_keywords}'")
         
         # Lancer TOUS les scrapers en parallèle
         tasks = [
@@ -49,16 +50,28 @@ class PlaywrightUniversalScraper:
             scrape_all_companies_async(normalized_keywords, location, contract_type),
         ]
         
+        logger.info(f"🔄 Lancement de {len(tasks)} scrapers en parallèle...")
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info(f"✅ Scrapers terminés, traitement des résultats...")
         
         jobs = []
-        for result in results:
-            if isinstance(result, list):
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"❌ Scraper {i} erreur: {result}")
+            elif isinstance(result, list):
+                logger.info(f"✅ Scraper {i}: {len(result)} offres")
                 jobs.extend(result)
+            else:
+                logger.warning(f"⚠️ Scraper {i}: résultat inattendu {type(result)}")
+        
+        logger.info(f"📊 Total avant dédupe: {len(jobs)} offres")
+        
+        logger.info(f"📊 Total avant dédupe: {len(jobs)} offres")
         
         # Fallback si 0 résultats
         if len(jobs) == 0:
             logger.warning("⚠️ 0 résultats, fallback activé")
+            logger.info(f"🔄 Fallback 1: simplification '{keywords}' → '{self.normalizer.simplify(keywords)}'")
             simple = self.normalizer.simplify(keywords)
             tasks = [
                 scrape_indeed_async(simple, location, contract_type),
