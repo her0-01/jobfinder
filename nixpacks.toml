@@ -20,12 +20,11 @@ nixPkgs = [
 
 [phases.install]
 cmds = [
-    "pip install -r job_scraper/requirements.txt",
-    "PLAYWRIGHT_BROWSERS_PATH=/app/.playwright playwright install chromium --with-deps || playwright install chromium"
+    "pip install -r job_scraper/requirements.txt"
 ]
 
 [phases.build]
 cmds = []
 
 [start]
-cmd = "python web_app.py"
+cmd = "bash start.sh"
