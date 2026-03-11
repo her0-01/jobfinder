@@ -3,11 +3,13 @@ nixPkgs = ["python312", "chromium"]
 
 [phases.install]
 cmds = [
-    "pip install -r job_scraper/requirements.txt"
+    "pip install -r job_scraper/requirements.txt",
+    "playwright install chromium",
+    "playwright install-deps chromium"
 ]
 
 [phases.build]
 cmds = []
 
 [start]
-cmd = "cd job_scraper && python web_app.py"
+cmd = "python web_app.py"
