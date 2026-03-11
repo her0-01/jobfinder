@@ -213,8 +213,8 @@ def scrape_jobs():
                                 
                                 candidate_profile = f"RECHERCHE: {keywords}\nFORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}\nSPÉCIALISATION: {background.get('specialisation', '')}\nCOMPÉTENCES: {background.get('competences_cles', '')}"
                                 
-                                # Calculer par batch de 20 avec délai entre batches
-                                batch_size = 20
+                                # Calculer par batch de 50 avec délai entre batches
+                                batch_size = 50
                                 for i in range(0, len(current_jobs), batch_size):
                                     batch = current_jobs[i:i+batch_size]
                                     
@@ -268,7 +268,7 @@ Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                                     
                                     # Délai entre batches pour éviter rate limit
                                     if i + batch_size < len(current_jobs):
-                                        time.sleep(2)
+                                        time.sleep(0.5)  # 0.5s au lieu de 2s
                                 
                                 logger.info(f"✅ Scores calculés pour {len(current_jobs)} offres")
                             except Exception as e:
@@ -359,8 +359,8 @@ Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                             
                             candidate_profile = f"RECHERCHE: {keywords}\nFORMATION: {background.get('formation_actuelle', '')} -> {background.get('formation_visee', '')}\nSPÉCIALISATION: {background.get('specialisation', '')}\nCOMPÉTENCES: {background.get('competences_cles', '')}"
                             
-                            # Calculer par batch de 20 avec délai entre batches
-                            batch_size = 20
+                            # Calculer par batch de 50 avec délai entre batches
+                            batch_size = 50
                             for i in range(0, len(current_jobs), batch_size):
                                 batch = current_jobs[i:i+batch_size]
                                 
@@ -414,7 +414,7 @@ Réponds UNIQUEMENT avec un nombre entre 0 et 100."""
                                 
                                 # Délai entre batches pour éviter rate limit
                                 if i + batch_size < len(current_jobs):
-                                    time.sleep(2)
+                                    time.sleep(0.5)  # 0.5s au lieu de 2s
                             
                             logger.info(f"✅ Scores calculés pour {len(current_jobs)} offres")
                         except Exception as e:
